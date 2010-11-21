@@ -1,0 +1,17 @@
+;$Id$
+
+name = Timeline Animation
+description = Allows the creation of animation out of timeline archives
+package = "Timeline"
+core = 7.x
+files[]=timeline_animation.module
+files[]=timeline_animation.install
+files[]=timeline_animation.pages.inc
+
+
+; Information added by mku
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "timeline"
+datestamp = "1288445519"
+

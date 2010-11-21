@@ -1,0 +1,17 @@
+;$Id$
+
+name = Timeline
+description = Allows the integration and management of the timeline project
+package = "Timeline"
+core = 7.x
+files[]=timeline.module
+files[]=timeline.install
+files[]=timeline.admin.inc
+
+
+; Information added by mku
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "timeline"
+datestamp = "1288445519"
+
