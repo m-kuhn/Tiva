@@ -5,7 +5,7 @@
  * @file
  * This is an tl outlining how a module can be used to define a new
  * node type.  In Drupal 7 we move most of what was once needed in this file
- * to the node_timeline.install file so that it can be managed efficiently.
+ * to the timeline.install file so that it can be managed efficiently.
  *
  * In previous versions of Drupal, "teaser" and "page" were node view modes.  In
  * Drupal 7 we can define custom view modes to let the node know how it should
@@ -38,7 +38,7 @@ define("TIMELINE_NO_CONNECTION", 2);
  *
  */
 function _ajax_check_url_callback ($form, $form_state) {
-  $file = _timeline_download_image($form_state['values']['node_timeline_archive_url']['und'][0]);
+  $file = _timeline_download_image($form_state['values']['archive_url']['und'][0]);
   $image = image_load($file['filename']);
 
   $variables = array(
@@ -58,29 +58,6 @@ function timeline_validate($node, $form, $form_state) {
   echo "1";
   return;
 }
-
-/*
- * Validate a created or edited timeline archive
- *
- */
-/*
-function timeline_node_validate($node, $form, &$form_state) {
-  global $user;
-  if ($node->type == 'node_timeline_archive') {
-    $url = $node->node_timeline_archive_url['und'][0]['value'];
-    
-    // $image = _timeline_download_image($url);
-    $uri = system_retrieve_file($url);
-    
-    $file = new stdClass();
-    $file->uri      = $uri;
-    $file->filename = basename($file->uri);
-    $file->filemime = file_get_mimetype($file->uri);
-    $file->uid      = $user->uid;
-
-    $img = file_save($file);
-  }
-}*/
 
 /*
  * Check, if the given URL can be accessed.
@@ -246,7 +223,7 @@ function timeline_cron() {
   $nids = db_select('node', 'n')
     ->fields('n', array('nid', 'created'))
     ->condition('status', 1)
-    ->condition('type', 'node_timeline_archive')
+    ->condition('type', 'archive')
     ->execute()
     ->fetchCol();
 
@@ -262,7 +239,7 @@ function timeline_cron() {
   // start a seperate process for each archive
   foreach ($archives as $archive) {
     if (!function_exists('pcntl_fork')) {
-      _timeline_download_image($archive->node_timeline_archive_url['und'][0]['value']);
+      _timeline_download_image($archive->archive_url['und'][0]['value']);
     } else {
       // If we close the connection, a new one will be made for the child and
       // it's not going to kill a connection that is in use just in the very
@@ -284,7 +261,7 @@ function timeline_cron() {
         }
       } else {
         // we are the child download image and exit the process
-        $image = _timeline_download_image($archive->node_timeline_archive_url['und'][0]['value']);
+        $image = _timeline_download_image($archive->archive_url['und'][0]['value']);
 
         if ($image['errno'] == TIMELINE_OK) {
           $file = file_save_upload($image['filename']);

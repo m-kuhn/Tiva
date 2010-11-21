@@ -136,14 +136,14 @@ function _timeline_archive_installed_instances() {
         'teaser' => array('type' => 'hidden')
       ),
     ),
-    'preview_picture' => array(
+/*    'preview_picture' => array(
       'field_name'   => 'preview_picture',
       'label'        => $t('Preview Picture'),
       'type'         => 'image',
       'widget'       => array(
         'type'         => 'image_upload',
       ),
-    ),
+    ),*/
   );
 }
 
