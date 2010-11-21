@@ -8,6 +8,7 @@ files[]=timeline.module
 files[]=timeline.install
 files[]=timeline.admin.inc
 
+dependencies[] = image
 
 ; Information added by mku
 version = "7.x-1.x-dev"
