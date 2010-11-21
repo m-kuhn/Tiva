@@ -9,7 +9,7 @@ files[]=timeline_animation.install
 files[]=timeline_animation.pages.inc
 
 dependencies[] = timeline
-dependencies[] = date
+dependencies[] = date_popup
 
 ; Information added by mku
 version = "7.x-1.x-dev"
