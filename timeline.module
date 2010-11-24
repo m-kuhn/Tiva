@@ -38,42 +38,32 @@ define("TIMELINE_NO_CONNECTION", 2);
  *
  */
 function _ajax_check_url_callback ($form, $form_state) {
-  $file = _timeline_download_image($form_state['values']['archive_url']['und'][0]);
-  $image = image_load($file['filename']);
+  $errors = array();
+  $url = $form_state['values']['archive_url']['und'][0];
+  // default supported extensions.
+  // ToDo: make them configurable in admin display.
+  $extensions = 'png gif jpg jpeg';
+  $errors += timeline_validate_extensions($url, $extensions);
+  $img_tag = '';
 
-  $variables = array(
-    'style_name' => 'thumbnail',
-    'path'       => $file['filename'],
-    'alt'        => 'Image Preview',
-    'title'      => 'Image Preview',
-    'getsize'    => TRUE,
-  );
+  if (empty($errors)) {
+    $download = _timeline_download_image($url);
+    $image = image_load($download['file']->uri);
 
-  $img_tag = theme('image_style', array('style_name' => 'thumbnail', 'path' => $file['filename'], 'getsize' => TRUE));
+    $variables = array(
+      'style_name' => 'thumbnail',
+      'path'       => $download['file']->uri,
+      'alt'        => 'Image Preview',
+      'title'      => 'Image Preview',
+      'getsize'    => TRUE,
+    );
+
+    $img_tag = theme('image_style', $variables);
+  }
+
+  form_set_error('archive_url', implode('<br/>', $errors));
   return '<div id="url-check-div">' . $img_tag . '</div>';
 }
-
-
-function timeline_validate($node, $form, $form_state) {
-  echo "1";
-  return;
-}
-
-/*
- * Check, if the given URL can be accessed.
- */
-
-function _url_exists($url) {
-  return 1;
-
-  /**/
-}
-
-
-
-
-
-
 
 
 
@@ -157,10 +147,13 @@ function _timeline_download_image($url) {
     $file->filemime = file_get_mimetype($file->uri);
     $file->uid      = $user->uid;
 
-    $img = file_save($file);
+    // The file is saved with status = 0. That means it is a temporary file and
+    // will be deleted after a certain time. That's okay for preview, but in case
+    // of a download we need to set status to 1 to get the system to keep it.
+    file_save($file);
 
     $retval['httpcode'] = $httpcode;
-    $retval['filename'] = $tempnam;
+    $retval['file']     = $file;
   }
 
   return $retval;
@@ -253,14 +246,15 @@ function timeline_cron() {
       if ($pid == -1) {
            // could not fork
       } else if ($pid) {
-        // we are the parent
+        // we are the parent => babysit the childs
         $running_processes++;
         if (count($running_processes) >= $max_processes) {
           $die_pid = pcntl_wait($status); // Wait for a child to exit
           $running_processes --;
         }
       } else {
-        // we are the child download image and exit the process
+        // we are the child => download image and exit the process to let the
+        // parent spawn more processes
         $image = _timeline_download_image($archive->archive_url['und'][0]['value']);
 
         if ($image['errno'] == TIMELINE_OK) {
@@ -274,6 +268,20 @@ function timeline_cron() {
     }
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /*
  * Here follow the definitions for our URL-Field.
@@ -309,4 +317,29 @@ function timeline_field_widget_form(&$form, &$form_state, $field, $instance, $la
     '#suffix'        => '<div id="url-check-div"></div>',
   );
   return $element;
+}
+
+/**
+ * Check that the filename ends with an allowed extension.
+ * Copied from modules/file/file.inc
+ *
+ * @param $filename
+ *   A filename to check.
+ * @param $extensions
+ *   A string with a space separated list of allowed extensions.
+ *
+ * @return
+ *   An array. If the file extension is not allowed, it will contain an error
+ *   message.
+ *
+ * @see hook_file_validate()
+ */
+function timeline_validate_extensions($filename, $extensions) {
+  $errors = array();
+
+  $regex = '/\.(' . preg_replace('/ +/', '|', preg_quote($extensions)) . ')$/i';
+  if (!preg_match($regex, $filename)) {
+    $errors[] = t('Only files with the following extensions are allowed: %files-allowed.', array('%files-allowed' => $extensions));
+  }
+  return $errors;
 }
