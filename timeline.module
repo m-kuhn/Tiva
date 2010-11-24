@@ -8,41 +8,8 @@
  * 
  */
 
-/*
- *
- */
-function _ajax_check_url_callback ($form, $form_state) {
-  $errors = array();
-  $url = $form_state['values']['archive_url']['und'][0];
-  // default supported extensions.
-  // ToDo: make them configurable in admin display.
-  $extensions = 'png gif jpg jpeg';
-  $errors += timeline_validate_extensions($url, $extensions);
-  $img_tag = '';
+module_load_include('inc', 'timeline', '/timeline.field');
 
-  if (empty($errors)) {
-    $download = _timeline_download_image($url);
-
-    $errors += $download['errmsg'];
-
-    if (empty($errors)) {
-      $image = image_load($download['file']->uri);
-
-      $variables = array(
-        'style_name' => 'thumbnail',
-        'path'       => $download['file']->uri,
-        'alt'        => 'Image Preview',
-        'title'      => 'Image Preview',
-        'getsize'    => TRUE,
-      );
-
-      $img_tag = theme('image_style', $variables);
-    }
-  }
-
-  form_set_error('archive_url', implode('<br/>', $errors));
-  return '<div id="url-check-div">' . $img_tag . '</div>';
-}
 
 
 
@@ -266,41 +233,6 @@ function timeline_cron() {
 
 
 
-/*
- * Here follow the definitions for our URL-Field.
- * We have to do this to perform ajax. No idea why.
- *
- */
-
-function timeline_field_widget_info() {
-  return array(
-    'text_timeline_url' => array(
-      'label' => t('Source URL'),
-      'field types' => array('text'),
-      'settings' => array('size' => 60),
-      'behaviors' => array(
-        'multiple values' => FIELD_BEHAVIOR_DEFAULT,
-        'default value' => FIELD_BEHAVIOR_DEFAULT,
-      ),
-    ),
-  );
-}
-
-
-function timeline_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
-  $element += array(
-    '#type'          => 'textfield',
-    '#default_value' => isset($items[$delta]) ? $items[$delta] : '',
-    '#ajax'          => array(
-        'callback'     => '_ajax_check_url_callback',
-        'wrapper'      => 'url-check-div',
-        'method'       => 'replace',
-        'effect'       => 'fade',
-      ),
-    '#suffix'        => '<div id="url-check-div"></div>',
-  );
-  return $element;
-}
 
 /**
  * Check that the filename ends with an allowed extension.

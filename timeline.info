@@ -6,6 +6,7 @@ package = "Timeline"
 core = 7.x
 files[]=timeline.module
 files[]=timeline.install
+files[]=timeline.field.inc
 files[]=timeline.admin.inc
 
 dependencies[] = image
