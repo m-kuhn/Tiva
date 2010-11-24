@@ -3,36 +3,10 @@
 
 /**
  * @file
- * This is an tl outlining how a module can be used to define a new
- * node type.  In Drupal 7 we move most of what was once needed in this file
- * to the timeline.install file so that it can be managed efficiently.
  *
- * In previous versions of Drupal, "teaser" and "page" were node view modes.  In
- * Drupal 7 we can define custom view modes to let the node know how it should
- * return it's data.  This module declares a custom view mode called
- * "timeline_node_list".
- *
- * We no longer need an extra database table to store this content type's
- * information.
- *
- * Most node types that provide fields do not require any custom code for
- * the fields, as the fields system provides storage and access.
- *
- * See @link http://drupal.org/node/707832 Field API Tutorial @endlink
- *
- * See @link http://drupal.org/node/443536 Field API Handbook Page @endlink
- *
- * See @link field Field API documentation @endlink
- *
- * See @link field_timeline.install field_timeline.install @endlink
- *
- * Remember that most node types do not require any custom code, as one
- * simply creates them using the fields UI.
+ * This file contains the code for archives.
+ * 
  */
-
-define("TIMELINE_OK", 0);
-define("TIMELINE_NO_IMG", 1);
-define("TIMELINE_NO_CONNECTION", 2);
 
 /*
  *
@@ -48,17 +22,22 @@ function _ajax_check_url_callback ($form, $form_state) {
 
   if (empty($errors)) {
     $download = _timeline_download_image($url);
-    $image = image_load($download['file']->uri);
 
-    $variables = array(
-      'style_name' => 'thumbnail',
-      'path'       => $download['file']->uri,
-      'alt'        => 'Image Preview',
-      'title'      => 'Image Preview',
-      'getsize'    => TRUE,
-    );
+    $errors += $download['errmsg'];
 
-    $img_tag = theme('image_style', $variables);
+    if (empty($errors)) {
+      $image = image_load($download['file']->uri);
+
+      $variables = array(
+        'style_name' => 'thumbnail',
+        'path'       => $download['file']->uri,
+        'alt'        => 'Image Preview',
+        'title'      => 'Image Preview',
+        'getsize'    => TRUE,
+      );
+
+      $img_tag = theme('image_style', $variables);
+    }
   }
 
   form_set_error('archive_url', implode('<br/>', $errors));
@@ -105,40 +84,38 @@ function _get_preview_image($url) {
 }
 
 /*
+ * Downloads the image
  *
  */
 
 function _timeline_download_image($url) {
   global $user;
   $retval = array(
-    'errno'  => TIMELINE_OK,
-    'errmsg' => ''
+    'errmsg' => array(),
   );
 
   $maxsize = variable_get('timeline_max_image_size', 1000000);
 
-  // Version 4.x supported
-  $handle = curl_init($url);
+  $ch = curl_init($url);
 
-  if ($handle === FALSE)
+  if ($ch === FALSE)
   {
-      return array('errno' => TIMELINE_NO_CONNECTION);
+    $retval['errmsg'][] = 'Could not open connection.';
   }
   else {
     // ToDo: munge the filename because of security
     $tempnam = file_create_filename(basename($url), 'public://');
     $fh = fopen(drupal_realpath($tempnam), 'w');
 
-    curl_setopt($handle, CURLOPT_FAILONERROR, TRUE);  // this works
-    curl_setopt($handle, CURLOPT_HTTPHEADER, array("User-Agent: Timeline Download Script; See http://tiva.geo.uzh.ch;") );
-    curl_setopt($handle, CURLOPT_FILE, $fh);
-    curl_setopt($handle, CURLOPT_TIMEOUT, 30); // Set a timeout (for the whole operation)
-    curl_setopt($handle, CURLOPT_RANGE,"-$maxsize"); // Limit the maximum file size
+    curl_setopt($ch, CURLOPT_FAILONERROR, TRUE);  // this works
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array("User-Agent: Timeline Download Script; See http://tiva.geo.uzh.ch;") );
+    curl_setopt($ch, CURLOPT_FILE, $fh);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Set a timeout (for the whole operation)
+    curl_setopt($ch, CURLOPT_RANGE,"-$maxsize"); // Limit the maximum file size
 
-    curl_exec($handle);
-    $info = curl_getinfo($handle, CURLINFO_CONTENT_TYPE);
-    $httpcode = curl_getinfo($handle, CURLINFO_HTTP_CODE);
-    curl_close($handle);
+    $curlresult = curl_exec($ch);
+    $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
     fclose($fh);
 
     $file = new stdClass();
@@ -152,6 +129,12 @@ function _timeline_download_image($url) {
     // of a download we need to set status to 1 to get the system to keep it.
     file_save($file);
 
+    if (!$curlresult) {
+      $retval['errmsg'][] = t('The connection could not be opened.');
+    }
+    if ($httpcode >= 300) {
+      $retval['errmsg'][] = t('File could not be downloaded. (HTTP Code %httpcode)', array('%httpcode' => $httpcode));
+    }
     $retval['httpcode'] = $httpcode;
     $retval['file']     = $file;
   }
