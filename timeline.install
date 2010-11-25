@@ -72,7 +72,6 @@ function timeline_install() {
  * node_timeline_install() and node_timeline_uninstall().
  */
 function _timeline_archive_installed_fields() {
-  $t = get_t();
   return array(
     'archive_url' => array(
       'field_name'   => 'archive_url',
@@ -99,6 +98,7 @@ function _timeline_archive_installed_fields() {
     ),
   );
 }
+
 
 /**
  * Return a structured array defining the instances for this content type.
@@ -147,6 +147,48 @@ function _timeline_archive_installed_instances() {
   );
 }
 
+function _timeline_frequencies_installed_fields() {
+  $t = get_t();
+  return array(
+    'timeline_frequency_seconds' => array(
+      'field_name'   => 'timeline_frequency_seconds',
+      'type'         => 'number_integer',
+    ),
+  );
+}
+
+
+function _timeline_frequencies_installed_instances() {
+  $t = get_t();
+  return array(
+    'timeline_frequency_seconds' => array(
+      'field_name'   => 'timeline_frequency_seconds',
+      'label'        => $t('Frequency in seconds'),
+      'type'         => 'number_integer',
+      'required'     => true,
+      'widget'       => array(
+        'type'         => 'number',
+      ),
+    ),
+  );
+}
+
+function _timeline_default_frequencies() {
+  return array(
+    array(
+      'text'    => '5 minutes',
+      'seconds' => 300,
+    ),
+    array(
+      'text'    => '1 hour',
+      'seconds' => 3600,
+    ),
+    array(
+      'text'    => '1 day',
+      'seconds' => 86400,
+    ),
+  );
+}
 /**
  * Implements hook_uninstall().
  *
@@ -185,10 +227,28 @@ function timeline_uninstall() {
   // http://api.drupal.org/api/function/node_type_delete/7
   node_type_delete('archive');
 
+  foreach (array_keys(_timeline_frequencies_installed_fields()) as $field) {
+    field_delete_field($field);
+  }
+
+  // Delete all fields from the frequencies vocabulary
+  // ToDo: Doesn't work, for whatever reason
+  $instances = field_info_instances('taxonomy_term', 'timeline_frequencies');
+  foreach ($instances as $instance_name => $instance) {
+    field_delete_instance($instance);
+  }
+
+  taxonomy_vocabulary_delete(variable_get('timeline_freq_vocabulary', 0));
+  variable_del('timeline_freq_vocabulary');
+
   // Purge all field infromation
   // http://api.drupal.org/api/function/field_purge_batch/7
   field_purge_batch(1000);
 }
+
+/*
+ *
+ */
 
 function timeline_schema() {
   $schema['records'] = array(
@@ -255,4 +315,54 @@ function timeline_schema() {
     'primary key' => array('rid'),
   );
   return $schema;
+}
+
+/*
+ *
+ */
+
+function timeline_update_7001() {
+  $t = get_t();
+  $vocabulary = taxonomy_vocabulary_load(variable_get('timeline_freq_vocabulary', 0));
+  if (!$vocabulary) {
+    $edit = array(
+      'name' => t('Frequencies'),
+      'machine_name' => 'timeline_frequencies',
+      'description' => t('The available frequencies for the image collector.'),
+      'hierarchy' => 1,
+      'module' => 'timeline',
+      'weight' => -10,
+    );
+    $vocabulary = (object) $edit;
+    taxonomy_vocabulary_save($vocabulary);
+    variable_set('timeline_freq_vocabulary', $vocabulary->vid);
+  }
+
+  foreach (_timeline_frequencies_installed_fields() as $field) {
+    field_create_field($field);
+  }
+
+  // Create all the instances for our fields.
+  // http://api.drupal.org/api/function/field_create_instance/7
+  foreach (_timeline_frequencies_installed_instances() as $instance) {
+    $instance['entity_type'] = 'taxonomy_term';
+    $instance['bundle'] = $vocabulary->machine_name;
+    field_create_instance($instance);
+  }
+
+  foreach (_timeline_default_frequencies() as $freqency) {
+    $edit = array(
+      'name' => $t($freqency['text']),
+      'description' => '',
+      'parent' => array(0),
+      'vid' => $vocabulary->vid,
+      'timeline_frequency_seconds' => array(
+        'und' => array(
+          0 => $frequency['seconds'],
+        ),
+      ),
+    );
+    $term = (object) $edit;
+    taxonomy_term_save($term);
+  }
 }
