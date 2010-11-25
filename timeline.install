@@ -201,14 +201,14 @@ function timeline_schema() {
         'not null' => TRUE,
       ),
       'nid' => array(
-        'description' => 'The current {node}.nid of the archive this image belongs to.',
+        'description' => 'The {node}.nid of the archive this image belongs to.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
       ),
       'fid' => array(
-        'description' => 'The {file}.fid.',
+        'description' => 'The {file_managed}.fid.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
@@ -229,7 +229,7 @@ function timeline_schema() {
         'default' => 0,
       ),
       'error' => array(
-        'description' => 'Contains an error code. Either http or -1 in case of not connected. 200 is ok.',
+        'description' => 'Contains an error code. Either http or -1 in case of not connected. 200 - 206 is ok.',
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
