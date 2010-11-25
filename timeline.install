@@ -77,7 +77,7 @@ function _timeline_archive_installed_fields() {
       'field_name'   => 'archive_url',
       'type'         => 'text',
       'settings'     => array(
-        'max_length'   => 60,
+        'max_length'   => 255,
       ),
     ),
     'archive_frequency' => array(
