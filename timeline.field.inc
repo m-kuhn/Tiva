@@ -107,7 +107,7 @@ function timeline_url_validate($element, &$form_state) {
   $errors += timeline_validate_extensions($url, $extensions);
 
   if (empty($errors)) {
-    $download = _timeline_download_image($url);
+    $download = _timeline_download_image($url, 'preview');
 
     $errors += $download['errmsg'];
 

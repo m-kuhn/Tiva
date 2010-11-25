@@ -55,7 +55,7 @@ function _get_preview_image($url) {
  *
  */
 
-function _timeline_download_image($url) {
+function _timeline_download_image($url, $subdir) {
   global $user;
   $retval = array(
     'errmsg' => array(),
@@ -71,7 +71,9 @@ function _timeline_download_image($url) {
   }
   else {
     // ToDo: munge the filename because of security
-    $tempnam = file_create_filename(basename($url), 'public://');
+    $directory = 'public://timeline/images/' . $subdir;
+    file_prepare_directory($directory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
+    $tempnam = file_create_filename(basename($url), $directory);
     $fh = fopen(drupal_realpath($tempnam), 'w');
 
     curl_setopt($ch, CURLOPT_FAILONERROR, TRUE);  // this works
@@ -185,7 +187,7 @@ function timeline_cron() {
   // start a seperate process for each archive
   foreach ($archives as $archive) {
     if (!function_exists('pcntl_fork')) {
-      _timeline_download_image($archive->archive_url['und'][0]['value']);
+      _timeline_download_image($archive->archive_url['und'][0]['value'], $archive);
     } else {
       // If we close the connection, a new one will be made for the child and
       // it's not going to kill a connection that is in use just in the very
@@ -209,7 +211,7 @@ function timeline_cron() {
         // we are the child
         // here is the actual download done
         // as soon as it's done, exit and let the parent spawn more processes
-        $download = _timeline_download_image($archive->archive_url['und'][0]['value']);
+        $download = _timeline_download_image($archive->archive_url['und'][0]['value'], $archive);
         
         if (empty($download['errmsg'])) {
           _timeline_save_image($timestamp, $download['file'], $archive->nid, $download['httpcode']);
