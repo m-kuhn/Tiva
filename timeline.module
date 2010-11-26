@@ -187,7 +187,7 @@ function timeline_cron() {
   // start a seperate process for each archive
   foreach ($archives as $archive) {
     if (!function_exists('pcntl_fork')) {
-      _timeline_download_image($archive->archive_url['und'][0]['value'], $archive);
+      _timeline_download_image($archive->archive_url['und'][0]['value'], $archive->nid);
     } else {
       // If we close the connection, a new one will be made for the child and
       // it's not going to kill a connection that is in use just in the very
@@ -211,7 +211,7 @@ function timeline_cron() {
         // we are the child
         // here is the actual download done
         // as soon as it's done, exit and let the parent spawn more processes
-        $download = _timeline_download_image($archive->archive_url['und'][0]['value'], $archive);
+        $download = _timeline_download_image($archive->archive_url['und'][0]['value'], $archive->nid);
         
         if (empty($download['errmsg'])) {
           _timeline_save_image($timestamp, $download['file'], $archive->nid, $download['httpcode']);
