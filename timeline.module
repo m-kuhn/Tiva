@@ -162,8 +162,10 @@ function _timeline_save_image($sched_time, $file, $archive, $error) {
  */
 
 function timeline_cron() {
+  $timestamp = array();
   // get the timestamp when cron was started
-  $timestamp = system ('date -d "`ps -p ' . getmypid() . ' -o lstart=`" +\'%s\'');
+  exec ('date -d "`ps -p ' . getmypid() . ' -o lstart=`" +\'%s\'', &$timestamp);
+  $timestamp = $timestamp[0];
 
   watchdog ('info', "timeline cron run (timestamp: $timestamp)");
 
@@ -222,7 +224,7 @@ function timeline_cron() {
         if (empty($download['errmsg'])) {
           _timeline_save_image($timestamp, $download['file'], $archive->nid, $download['httpcode']);
         } else {
-          watchdog ('timeline archive', 'we got an error: ' . implode('<br/>', $download['errmsg']));
+          watchdog ('timeline archive', 'error downloading image for archive ' . implode('<br/>', $download['errmsg']));
         }
         exit;
       }
