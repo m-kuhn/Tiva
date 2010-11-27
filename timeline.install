@@ -63,6 +63,8 @@ function timeline_install() {
     $instance['bundle'] = $archive['type'];
     field_create_instance($instance);
   }
+
+  timeline_update_7001();
 }
 
 /**
@@ -136,14 +138,14 @@ function _timeline_archive_installed_instances() {
         'teaser' => array('type' => 'hidden')
       ),
     ),
-/*    'preview_picture' => array(
+    'preview_picture' => array(
       'field_name'   => 'preview_picture',
       'label'        => $t('Preview Picture'),
       'type'         => 'image',
       'widget'       => array(
         'type'         => 'image_upload',
       ),
-    ),*/
+    ),
   );
 }
 
@@ -336,33 +338,33 @@ function timeline_update_7001() {
     $vocabulary = (object) $edit;
     taxonomy_vocabulary_save($vocabulary);
     variable_set('timeline_freq_vocabulary', $vocabulary->vid);
-  }
+  
+    foreach (_timeline_frequencies_installed_fields() as $field) {
+      field_create_field($field);
+    }
 
-  foreach (_timeline_frequencies_installed_fields() as $field) {
-    field_create_field($field);
-  }
+    // Create all the instances for our fields.
+    // http://api.drupal.org/api/function/field_create_instance/7
+    foreach (_timeline_frequencies_installed_instances() as $instance) {
+      $instance['entity_type'] = 'taxonomy_term';
+      $instance['bundle'] = $vocabulary->machine_name;
+      field_create_instance($instance);
+    }
 
-  // Create all the instances for our fields.
-  // http://api.drupal.org/api/function/field_create_instance/7
-  foreach (_timeline_frequencies_installed_instances() as $instance) {
-    $instance['entity_type'] = 'taxonomy_term';
-    $instance['bundle'] = $vocabulary->machine_name;
-    field_create_instance($instance);
-  }
-
-  foreach (_timeline_default_frequencies() as $freqency) {
-    $edit = array(
-      'name' => $t($freqency['text']),
-      'description' => '',
-      'parent' => array(0),
-      'vid' => $vocabulary->vid,
-      'timeline_frequency_seconds' => array(
-        'und' => array(
-          0 => $frequency['seconds'],
+    foreach (_timeline_default_frequencies() as $freqency) {
+      $edit = array(
+        'name' => $t($freqency['text']),
+        'description' => '',
+        'parent' => array(0),
+        'vid' => $vocabulary->vid,
+        'timeline_frequency_seconds' => array(
+          'und' => array(
+            0 => $frequency['seconds'],
+          ),
         ),
-      ),
-    );
-    $term = (object) $edit;
-    taxonomy_term_save($term);
+      );
+      $term = (object) $edit;
+      taxonomy_term_save($term);
+    }
   }
 }
