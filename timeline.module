@@ -119,9 +119,18 @@ function _timeline_save_image($sched_time, $file, $archive, $error) {
   $file->status = FILE_STATUS_PERMANENT;
   file_save($file);
 
+  if(empty($archive->preview_picture)) {
+    $archive->preview_picture = array(
+      'und' => array(
+        0 => (array) $file,
+      ),
+    );
+    node_save($archive);
+  }
+
   db_insert('records')
     ->fields(array(
-      'nid' => $archive,
+      'nid' => $archive->nid,
       'fid' => $file->fid,
       'scheduled_time' => $sched_time,
       'saved_time' => time(),
@@ -192,7 +201,7 @@ function timeline_cron() {
         $download = _timeline_download_image($archive->archive_url['und'][0]['value'], $archive->nid);
 
         if (empty($download['errmsg'])) {
-          _timeline_save_image($timestamp, $download['file'], $archive->nid, $download['httpcode']);
+          _timeline_save_image($timestamp, $download['file'], $archive, $download['httpcode']);
         } else {
           watchdog ('timeline archive', 'we got an error: ' . implode('<br/>', $download['errmsg']));
         }
@@ -222,7 +231,7 @@ function timeline_cron() {
         $download = _timeline_download_image($archive->archive_url['und'][0]['value'], $archive->nid);
         
         if (empty($download['errmsg'])) {
-          _timeline_save_image($timestamp, $download['file'], $archive->nid, $download['httpcode']);
+          _timeline_save_image($timestamp, $download['file'], $archive, $download['httpcode']);
         } else {
           watchdog ('timeline archive', 'error downloading image for archive ' . implode('<br/>', $download['errmsg']));
         }
@@ -231,8 +240,6 @@ function timeline_cron() {
     }
   }
 }
-
-
 
 
 
