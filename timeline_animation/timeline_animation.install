@@ -86,11 +86,11 @@ function _timeline_animation_installed_fields() {
     ),
     'timeline_animation_start' => array(
       'field_name'   => 'timeline_animation_start',
-      'type'         => 'datetime',
+      'type'         => 'datestamp',
     ),
     'timeline_animation_end' => array(
       'field_name'   => 'timeline_animation_end',
-      'type'         => 'datetime',
+      'type'         => 'datestamp',
     ),
     'timeline_animation_fps' => array(
       'field_name'   => 'timeline_animation_fps',

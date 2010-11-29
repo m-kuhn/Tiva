@@ -66,7 +66,6 @@ function timeline_animation_cron() {
       continue;
     }
 
-    try {
     $result = db_query("
       SELECT f.uri
       FROM {records} r
@@ -82,9 +81,7 @@ function timeline_animation_cron() {
         ':end_time'   => $animation->timeline_animation_end['und'][0]['value'],
       ))
     ->fetchAssoc();
-    } catch (Exception $e) {
-    echo 'Caught exception: ',  $e->getMessage(), "\n";
-    }
+
     // Do symlinking...
     foreach ($result as $record) {
       symlink($target, $link);
