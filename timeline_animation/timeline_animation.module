@@ -121,7 +121,7 @@ function timeline_animation_cron() {
     
     $ffmpeg = new FfmpegVideo();
     $output = $ffmpeg->convert_video("{$temppath}frame%04d.jpg", drupal_realpath($converted), $dimensions);
-    drupal_unlink(temppath);
+    drupal_unlink($temppath);
 
     watchdog('timeline_animation', 'Created animation for @item. Output: @output', array('@string' => $item->data, '@output' => $output));
 
@@ -136,7 +136,7 @@ function timeline_animation_cron() {
 
     $file = file_save($file);
 
-    $animation->timeline_animation_animation[und][0] = (array)$file;
+    $animation->timeline_animation_animation['und''][0] = (array)$file;
     node_save($animation);
     
     $queue->deleteItem($item);
