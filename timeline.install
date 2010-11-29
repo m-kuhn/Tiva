@@ -276,8 +276,8 @@ function timeline_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
-      'scheduled_time' => array(
-        'description' => 'The time our image was scheduled to download.',
+      'request_time' => array(
+        'description' => 'The time the download was requested.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
@@ -298,11 +298,11 @@ function timeline_schema() {
       ),
     ),
     'indexes' => array(
-      'record_scheduled' => array('scheduled_time'),
+      'record_requested' => array('request_time'),
       'record_nid' => array('nid'),
     ),
     'unique keys' => array(
-      'nid_scheduled_time' => array('nid', 'scheduled_time'),
+      'nid_request_time' => array('nid', 'request_time'),
     ),
     'foreign keys' => array(
       'file_managed' => array(
@@ -367,4 +367,8 @@ function timeline_update_7001() {
       taxonomy_term_save($term);
     }
   }
+}
+
+function timeline_update_7002() {
+  db_query("ALTER TABLE `records` CHANGE `scheduled_time` `request_time` INT( 10 ) UNSIGNED NOT NULL DEFAULT '0' COMMENT 'The time our image was scheduled to download.'")->execute();
 }

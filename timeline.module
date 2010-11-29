@@ -115,7 +115,7 @@ function _timeline_download_image($url, $subdir) {
  *
  */
 
-function _timeline_save_image($sched_time, $file, $archive, $error) {
+function _timeline_save_image($request_time, $file, $archive, $error) {
   $file->status = FILE_STATUS_PERMANENT;
   file_save($file);
 
@@ -132,7 +132,7 @@ function _timeline_save_image($sched_time, $file, $archive, $error) {
     ->fields(array(
       'nid' => $archive->nid,
       'fid' => $file->fid,
-      'scheduled_time' => $sched_time,
+      'request_time' => $request_time,
       'saved_time' => time(),
       'error' => $error,
       ))
@@ -171,13 +171,6 @@ function _timeline_save_image($sched_time, $file, $archive, $error) {
  */
 
 function timeline_cron() {
-  $timestamp = array();
-  // get the timestamp when cron was started
-  exec ('date -d "`ps -p ' . getmypid() . ' -o lstart=`" +\'%s\'', &$timestamp);
-  $timestamp = $timestamp[0];
-
-  watchdog ('info', "timeline cron run (timestamp: $timestamp)");
-
   // load all archives
   $nids = db_select('node', 'n')
     ->fields('n', array('nid', 'created'))
@@ -198,13 +191,14 @@ function timeline_cron() {
   // start a seperate process for each archive
   foreach ($archives as $archive) {
     if (!function_exists('pcntl_fork')) {
-        $download = _timeline_download_image($archive->archive_url['und'][0]['value'], $archive->nid);
+      $timestamp = time();
+      $download = _timeline_download_image($archive->archive_url['und'][0]['value'], $archive->nid);
 
-        if (empty($download['errmsg'])) {
-          _timeline_save_image($timestamp, $download['file'], $archive, $download['httpcode']);
-        } else {
-          watchdog ('timeline archive', 'we got an error: ' . implode('<br/>', $download['errmsg']));
-        }
+      if (empty($download['errmsg'])) {
+        _timeline_save_image($timestamp, $download['file'], $archive, $download['httpcode']);
+      } else {
+        watchdog ('timeline archive', 'we got an error: ' . implode('<br/>', $download['errmsg']));
+      }
     } else {
       // If we close the connection, a new one will be made for the child and
       // it's not going to kill a connection that is in use just in the very
@@ -228,6 +222,7 @@ function timeline_cron() {
         // we are the child
         // here is the actual download done
         // as soon as it's done, exit and let the parent spawn more processes
+        $timestamp = time();
         $download = _timeline_download_image($archive->archive_url['und'][0]['value'], $archive->nid);
         
         if (empty($download['errmsg'])) {
