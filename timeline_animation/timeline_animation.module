@@ -1,67 +1,103 @@
 <?php
 // $Id$
 
-function timeline_animation_menu() {
-  $items['archive/node/add/animation'] = array(
-    'page callback' => 'timeline_animation_edit',
-    'page arguments' => array(1),
-  );
-}
 /*
-function timeline_animation_load($timeline_animation_id) {
-  echo $timeline_animation_id;
-
-}
-
-function timeline_animation_node_info() {
-  return array(
-    'timeline_animation' => array(
-      'name' => t('Animation'),
-      'base' => 'timeline_animation',
-      'description' => t('Use for multi-user blogs. Every user gets a personal blog.'),
-    ),
-  );
-}*/
-
-/*
+ * Implements hook_menu
+ *
+ * Grab the path node/add/animation/%, so we can link directly from archive
+ * pages to a form where this archive already is selected.
+ *
+ */
 function timeline_animation_menu() {
-  // By using the MENU_CALLBACK type, we can register the callback for this
-  // path but do not have the item show up in the menu; the admin is not allowed
-  // to enable the item in the menu, either.
-  //
-  // Notice that the 'page arguments' is an array of numbers. These will be
-  // replaced with the corresponding parts of the menu path. In this case a 0
-  // would be replaced by 'example', a 1 by 'arguments', and like wise 2 and 3 will
-  // be replaced by what ever the user provides. These will be passed as
-  // arguments to the page_example_arguments() function.
-
-  $items['animation/add/%'] = array(
-    'page callback' => 'animation_create',
-    'page arguments' => array(2),
-    'access arguments' => array('access arguments page'),
-    'type' => MENU_CALLBACK,
+  $items['node/add/animation/%'] = array(
+    'title' => 'Timeline Animation',
+    'title callback' => 'check_plain',
+    'page callback' => 'animation_add',
+    'page arguments' => array(3),
+    'access callback' => 'node_access',
+    'access arguments' => array('create', 'animation'),
+    'description' => 'Create a new animation',
+    'file' => 'timeline_animation.pages.inc',
   );
-
+  
   return $items;
-}*/
-
-function animation_create ($archive) {
-  // Make sure you don't trust the URL to be safe! Always check for exploits.
-  if (!is_numeric($archive)) {
-    // We will just show a standard "access denied" page in this case.
-    drupal_access_denied();
-    return;  // We actually don't get here.
-  }
-
-  $list[] = t("First number was @number.", array('@number' => $archive));
-
-  $render_array['page_example_arguments'] = array(
-    '#theme' => 'item_list',  // The theme function to apply to the #items
-    '#items' => $list,  // The list itself.
-    '#title' => t('Argument Information'),
-  );
-  return $render_array;
 }
 
+/*
+ * Implements hook_node_insert
+ *
+ * In case of a new animation, add it to the queue, so it will be created by the
+ * next cron run.
+ *
+ */
+
+function timeline_animation_node_insert($node) {
+
+  if ($node->type == 'animation') {
+    $queue = DrupalQueue::get('animations_queue');
+    $queue->deleteQueue();
+    $queue->createQueue();  // There is no harm in trying to recreate existing.
+
+    $queue->createItem($node->nid);
+    timeline_animation_cron();
+  }
+}
+
+/*
+ * Implements hook_cron
+ *
+ * Create queued animations
+ *
+ */
+
+function timeline_animation_cron() {
+  module_load_include('inc', 'timeline', 'include/video_ffmpeg');
+
+  $queue = DrupalQueue::get('animations_queue');
+  $queue->createQueue();  // There is no harm in trying to recreate existing.
+
+  while ($item = $queue->claimItem(300)) // claim the item for 5 minutes
+  {
+    // Get all required images
+    $animation = node_load($item->data);
+
+    if (!$animation) {
+      // has been deleted??
+      continue;
+    }
+
+    try {
+    $result = db_query("
+      SELECT f.uri
+      FROM {records} r
+      LEFT JOIN {file_managed} f
+        ON f.fid = r.fid
+      WHERE FLOOR(r.request_time / :frequency) * :frequency % :interval = 0
+      AND r.request_time > :start_time
+      AND r.request_time < :end_time
+      ", array(
+        ':frequency'  => 300,
+        ':interval'   => 300 * $animation->timeline_animation_interval['und'][0]['value'],
+        ':start_time' => $animation->timeline_animation_start['und'][0]['value'],
+        ':end_time'   => $animation->timeline_animation_end['und'][0]['value'],
+      ))
+    ->fetchAssoc();
+    } catch (Exception $e) {
+    echo 'Caught exception: ',  $e->getMessage(), "\n";
+    }
+    // Do symlinking...
+    foreach ($result as $record) {
+      symlink($target, $link);
+    }
+
+    // Convert video
+    $ffmpeg = new FfmpegVideo();
+    $ffmpeg->convert_video("m . $item->data . img%04d.jpg", $converted, $dimensions);
+
+    watchdog('timeline_animation', 'Creating animation for @item', array('@string' => $item->data));
+
+    $queue->deleteItem($item);
+  }
+}
 
 ?>

@@ -6,7 +6,7 @@ package = "Timeline"
 core = 7.x
 files[]=timeline_animation.module
 files[]=timeline_animation.install
-files[]=timeline_animation.pages.inc
+files[]=timeline_animation.field.inc
 
 dependencies[] = timeline
 dependencies[] = date_popup

@@ -95,7 +95,15 @@ function _timeline_animation_installed_fields() {
     'timeline_animation_fps' => array(
       'field_name'   => 'timeline_animation_fps',
       'type'         => 'number_decimal',
-    )
+    ),
+    'timeline_animation_interval' => array(
+      'field_name'   => 'timeline_animation_interval',
+      'type'         => 'number_integer',
+    ),
+    'timeline_animation_animation' => array(
+      'field_name'   => 'timeline_animation_animation',
+      'type'         => 'file',
+    ),
   );
 }
 
@@ -144,8 +152,26 @@ function _timeline_animation_installed_instances() {
       'label'        => $t('FPS'),
       'type'         => 'textfield',
       'required'     => true,
-      'widget'       => array (
+      'widget'       => array(
         'type'         => 'textfield',
+      ),
+    ),
+    'timeline_animation_interval' => array(
+      'field_name'   => 'timeline_animation_interval',
+      'label'        => $t('Interval'),
+      'description'  => $t('Every <i>interval</i>th picture will be used.'),
+      'type'         => 'textfield',
+      'required'     => true,
+      'widget'       => array(
+        'type'         => 'textfield',
+      ),
+    ),
+    'timeline_animation_animation' => array(
+      'field_name'   => 'timeline_animation_animation',
+      'label'        => $t('Animation'),
+      'type'         => $t('file'),
+      'widget'       => array(
+        'type'         => 'timeline_animation',
       ),
     ),
   );
