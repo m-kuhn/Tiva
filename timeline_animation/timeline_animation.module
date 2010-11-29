@@ -136,7 +136,7 @@ function timeline_animation_cron() {
 
     $file = file_save($file);
 
-    $animation->timeline_animation_animation['und''][0] = (array)$file;
+    $animation->timeline_animation_animation['und'][0] = (array)$file;
     node_save($animation);
     
     $queue->deleteItem($item);
