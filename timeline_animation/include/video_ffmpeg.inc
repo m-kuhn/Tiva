@@ -19,7 +19,7 @@ class FfmpegVideo {
   protected $video_bitrate = 200;
   protected $video_width = 640;
   protected $video_height = 480;
-  protected $command = '-y -i !videofile -f flv -ar 22050 -ab !audiobitrate -s !size -b !videobitrate -qscale 1 !convertfile';
+  protected $command = '-y -i !videofile -r !framerate -an -s !size -b !videobitrate -qscale 1 !convertfile';
   protected $thumb_command = '-i !videofile -an -y -f mjpeg -ss !seek -vframes 1 !thumbfile';
   protected $ffmpeg = '/usr/bin/ffmpeg';
   protected $nice;
