@@ -108,7 +108,7 @@ class FfmpegVideo {
   public function convert_video($video, $converted, $dimensions) {
     // Setup our default command to be run.
     $command = t($this->params['command'], array(
-      '!videofile' => $video->filepath,
+      '!videofile' => $video,
       '!audiobitrate' => $this->params['audiobitrate'],
       '!size' => $dimensions,
       '!videobitrate' => $this->params['videobitrate'],

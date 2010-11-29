@@ -39,6 +39,7 @@ function timeline_animation_node_insert($node) {
     $queue->createQueue();  // There is no harm in trying to recreate existing.
 
     $queue->createItem($node->nid);
+    
     timeline_animation_cron();
   }
 }
@@ -56,13 +57,14 @@ function timeline_animation_cron() {
   $queue = DrupalQueue::get('animations_queue');
   $queue->createQueue();  // There is no harm in trying to recreate existing.
 
-  while ($item = $queue->claimItem(300)) // claim the item for 5 minutes
+  while ($item = $queue->claimItem(3600)) // claim the item for 60 minutes
   {
     // Get all required images
     $animation = node_load($item->data);
 
     if (!$animation) {
       // has been deleted??
+      $queue->deleteItem($item);
       continue;
     }
 
@@ -77,10 +79,18 @@ function timeline_animation_cron() {
       ", array(
         ':frequency'  => 300,
         ':interval'   => 300 * $animation->timeline_animation_interval['und'][0]['value'],
-        ':start_time' => 0,
+        ':start_time' => $animation->timeline_animation_start['und'][0]['value'],
         ':end_time'   => $animation->timeline_animation_end['und'][0]['value'],
       ))
     ->fetchAssoc();
+
+    if(!$result) {
+      // No frames? Delete the node.
+      // ToDo:
+      node_delete($animation->nid);
+      $queue->deleteItem($item);
+      continue;
+    }
 
     // Do symlinking...
     $temppath = file_directory_temp() . '/animation/' . $animation->nid;
@@ -88,18 +98,47 @@ function timeline_animation_cron() {
     $temppath .= '/';
 
     $i = 0;
+    $image_info = false;
     foreach ($result as $record) {
       // ToDo: Handle missing frames
+      // ToDo: Adjust file extension according to original files
       $link = sprintf("frame%04d.jpg", $i++);
       symlink(drupal_realpath($result['uri']), $temppath . $link);
+      if (!$image_info) {
+        $image_info = image_get_info($result['uri']);
+      }
     }
 
+    // Load the first image to determine extensions
+    // ToDo: Check it is an image...
+    $dimensions = "{$image_info['width']}x{$image_info['height']}";
+
     // Convert video
+    $directory = 'public://timeline/animations/' . $animation->nid;
+    file_prepare_directory($directory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
+
+    $converted = file_create_filename("animation{$animation->nid}.mp4", $directory);
+    
     $ffmpeg = new FfmpegVideo();
-    $ffmpeg->convert_video("m . $item->data . img%04d.jpg", $converted, $dimensions);
+    $output = $ffmpeg->convert_video("{$temppath}frame%04d.jpg", drupal_realpath($converted), $dimensions);
+    drupal_unlink(temppath);
 
-    watchdog('timeline_animation', 'Creating animation for @item', array('@string' => $item->data));
+    watchdog('timeline_animation', 'Created animation for @item. Output: @output', array('@string' => $item->data, '@output' => $output));
 
+    // save the file...
+    // ToDo: Check if the command was successful
+    $file = new stdClass();
+    $file->uri      = $converted;
+    $file->filename = basename($converted);
+    $file->filemime = file_get_mimetype($converted);
+    $file->uid      = $animation->uid;
+    $file->display  = 0;
+
+    $file = file_save($file);
+
+    $animation->timeline_animation_animation[und][0] = (array)$file;
+    node_save($animation);
+    
     $queue->deleteItem($item);
   }
 }
