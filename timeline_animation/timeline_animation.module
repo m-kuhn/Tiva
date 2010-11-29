@@ -51,7 +51,7 @@ function timeline_animation_node_insert($node) {
  */
 
 function timeline_animation_cron() {
-  module_load_include('inc', 'timeline', 'include/video_ffmpeg');
+  module_load_include('inc', 'timeline_animation', 'include/video_ffmpeg');
 
   $queue = DrupalQueue::get('animations_queue');
   $queue->createQueue();  // There is no harm in trying to recreate existing.
