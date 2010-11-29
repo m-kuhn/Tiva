@@ -77,14 +77,21 @@ function timeline_animation_cron() {
       ", array(
         ':frequency'  => 300,
         ':interval'   => 300 * $animation->timeline_animation_interval['und'][0]['value'],
-        ':start_time' => $animation->timeline_animation_start['und'][0]['value'],
+        ':start_time' => 0,
         ':end_time'   => $animation->timeline_animation_end['und'][0]['value'],
       ))
     ->fetchAssoc();
 
     // Do symlinking...
+    $temppath = file_directory_temp() . '/animation/' . $animation->nid;
+    file_prepare_directory($temppath, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
+    $temppath .= '/';
+
+    $i = 0;
     foreach ($result as $record) {
-      symlink($target, $link);
+      // ToDo: Handle missing frames
+      $link = sprintf("frame%04d.jpg", $i++);
+      symlink(drupal_realpath($result['uri']), $temppath . $link);
     }
 
     // Convert video
