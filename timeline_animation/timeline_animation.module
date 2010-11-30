@@ -137,7 +137,7 @@ function timeline_animation_cron() {
 
     drupal_rmdir($temppath);
 
-    watchdog('timeline_animation', 'Created animation for @item. Command: @Command Output: @output', array('@item' => $item->data, '@command' => $command, '@output' => $output));
+    watchdog('timeline_animation', 'Created animation for @item. Command: @command Output: @output', array('@item' => $item->data, '@command' => $command, '@output' => $output));
 
     // save the file...
     // ToDo: Check if the command was successful
