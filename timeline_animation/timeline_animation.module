@@ -135,7 +135,7 @@ function timeline_animation_cron() {
     $output = ob_get_contents();
     ob_end_clean();
 
-    drupal_unlink($temppath);
+    drupal_rmdir($temppath);
 
     watchdog('timeline_animation', 'Created animation for @item. Output: @output', array('@string' => $item->data, '@output' => $output));
 
