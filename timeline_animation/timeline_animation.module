@@ -73,10 +73,12 @@ function timeline_animation_cron() {
       FROM {records} r
       LEFT JOIN {file_managed} f
         ON f.fid = r.fid
-      WHERE FLOOR(r.request_time / :frequency) * :frequency % :interval = 0
+      WHERE r.nid = :archive_nid
       AND r.request_time > :start_time
       AND r.request_time < :end_time
+      AND FLOOR(r.request_time / :frequency) * :frequency % :interval = 0
       ", array(
+        ':archive_nid'=> $animation->timeline_animation_archive['und'][0]['nid'],
         ':frequency'  => 300,
         ':interval'   => 300 * $animation->timeline_animation_interval['und'][0]['value'],
         ':start_time' => $animation->timeline_animation_start['und'][0]['value'],
@@ -99,11 +101,14 @@ function timeline_animation_cron() {
 
     $i = 0;
     $image_info = false;
+    $symlinks = array();
+
     while ($record = $result->fetchAssoc()) {
       // ToDo: Handle missing frames
       // ToDo: Adjust file extension according to original files
       $link = sprintf("frame%04d.jpg", $i++);
       symlink(drupal_realpath($record['uri']), $temppath . $link);
+      $symlink[] = $temppath . $link;
       if (!$image_info) {
         $image_info = image_get_info($record['uri']);
       }
@@ -119,7 +124,7 @@ function timeline_animation_cron() {
 
     $converted = file_create_filename("animation{$animation->nid}.mp4", $directory);
 
-    $command = t('!ffmpeg_path -r !fps -b !bitrate -i !infile !converted -vcodec !codec -pass !pass -vtag !vtag', array(
+    $command = t('!ffmpeg_path -r !fps -b !bitrate -i !infile !converted -vcodec !codec -pass !pass -vtag !vtag 2>&1', array(
       '!ffmpeg_path' => '/usr/bin/ffmpeg',
       '!fps'       => 15,
       '!bitrate'   => '4000k',
@@ -131,12 +136,14 @@ function timeline_animation_cron() {
     ));
       
     ob_start();
-    passthru($command);
+    passthru($command, $command_return);
     $output = ob_get_contents();
     ob_end_clean();
 
-
-
+    // cleanup
+    foreach ($symlinks as $symlink) {
+      drupal_unlink($symlink);
+    }
     drupal_rmdir($temppath);
 
     watchdog('timeline_animation', 'Created animation for @item. Command: @command Output: @output', array('@item' => $item->data, '@command' => $command, '@output' => $output));
