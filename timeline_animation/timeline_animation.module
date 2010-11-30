@@ -105,7 +105,7 @@ function timeline_animation_cron() {
       $link = sprintf("frame%04d.jpg", $i++);
       symlink(drupal_realpath($record['uri']), $temppath . $link);
       if (!$image_info) {
-        $image_info = image_get_info($result['uri']);
+        $image_info = image_get_info($record['uri']);
       }
     }
 
