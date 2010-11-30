@@ -129,7 +129,7 @@ function timeline_animation_cron() {
       '!pass'      => 2,
       '!vtag'      => 'xvid',
     ));
-
+      
     ob_start();
     passthru($command);
     $output = ob_get_contents();
@@ -137,7 +137,7 @@ function timeline_animation_cron() {
 
     drupal_rmdir($temppath);
 
-    watchdog('timeline_animation', 'Created animation for @item. Output: @output', array('@string' => $item->data, '@output' => $output));
+    watchdog('timeline_animation', 'Created animation for @item. Command: @Command Output: @output', array('@item' => $item->data, '@command' => $command, '@output' => $output));
 
     // save the file...
     // ToDo: Check if the command was successful
