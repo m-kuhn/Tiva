@@ -119,8 +119,8 @@ function timeline_animation_cron() {
 
     $converted = file_create_filename("animation{$animation->nid}.mp4", $directory);
 
-    $command = t('!mpeg_path -r !fps -b !bitrate -i !infile !converted -vcodec !codec -pass !pass -vtag !vtag"', array(
-      '!mpeg_path' => '/usr/bin/ffmpeg',
+    $command = t('!ffmpeg_path -r !fps -b !bitrate -i !infile !converted -vcodec !codec -pass !pass -vtag !vtag', array(
+      '!ffmpeg_path' => '/usr/bin/ffmpeg',
       '!fps'       => 15,
       '!bitrate'   => '4000k',
       '!infile'    => "{$temppath}frame%04d.jpg",
@@ -134,6 +134,8 @@ function timeline_animation_cron() {
     passthru($command);
     $output = ob_get_contents();
     ob_end_clean();
+
+
 
     drupal_rmdir($temppath);
 
