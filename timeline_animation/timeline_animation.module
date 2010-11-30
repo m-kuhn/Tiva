@@ -82,7 +82,7 @@ function timeline_animation_cron() {
         ':start_time' => $animation->timeline_animation_start['und'][0]['value'],
         ':end_time'   => $animation->timeline_animation_end['und'][0]['value'],
       ))
-    ->fetchAssoc();
+;
 
     if(!$result) {
       // No frames? Delete the node.
@@ -99,11 +99,11 @@ function timeline_animation_cron() {
 
     $i = 0;
     $image_info = false;
-    foreach ($result as $record) {
+    while ($record = $result->fetchAssoc()) {
       // ToDo: Handle missing frames
       // ToDo: Adjust file extension according to original files
       $link = sprintf("frame%04d.jpg", $i++);
-      symlink(drupal_realpath($result['uri']), $temppath . $link);
+      symlink(drupal_realpath($record['uri']), $temppath . $link);
       if (!$image_info) {
         $image_info = image_get_info($result['uri']);
       }
