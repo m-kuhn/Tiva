@@ -124,7 +124,7 @@ function timeline_animation_cron() {
       '!fps'       => 15,
       '!bitrate'   => '4000k',
       '!infile'    => "{$temppath}frame%04d.jpg",
-      '!converted' => $converted,
+      '!converted' => drupal_realpath($converted),
       '!codec'     => 'mpeg4',
       '!pass'      => 2,
       '!vtag'      => 'xvid',
