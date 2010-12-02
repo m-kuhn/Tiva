@@ -172,26 +172,34 @@ function _timeline_save_image($request_time, $file, $archive, $error) {
 
 function timeline_cron() {
   // load all archives that need update
-  // ToDo: verify name of table of taxonomy terms (field_data_timeline_frequency_seconds)
+  // I'm pretty sure there is a nicer way to join the field data
   $nids = db_query("
     SELECT n.nid
     FROM {node} n
+    # join the last record, so we now the time of the last download
     LEFT JOIN
       (SELECT nid, MAX(request_time) AS last_request
        FROM {records}
        GROUP BY nid
       ) r
     ON r.nid = n.nid
+    # now join all the interval information (frequency / basetime)
     LEFT JOIN
-      (SELECT field_frequencies.entity_id, field_seconds.timeline_frequency_seconds_value AS seconds
+      (SELECT field_frequencies.entity_id                    AS entity_id,
+              field_seconds.timeline_frequency_seconds_value AS seconds,
+              field_basetime.archive_basetime_value          AS basetime
        FROM field_data_archive_frequency field_frequencies
        LEFT JOIN field_data_timeline_frequency_seconds field_seconds
        ON field_seconds.entity_id = field_frequencies.archive_frequency_tid
-      ) s
-    ON s.entity_id = n.nid
+       LEFT JOIN field_data_archive_basetime field_basetime
+       ON field_basetime.entity_id = field_frequencies.entity_id
+      ) intrval
+    ON intrval.entity_id = n.nid
     WHERE n.type = :type
     AND   n.status = :status
-    AND   r.last_request + s.seconds < :now
+    AND   FLOOR(r.last_request / intrval.seconds) * intrval.seconds + (intrval.basetime % intrval.seconds)
+          < FLOOR(:now / intrval.seconds) * intrval.seconds
+    OR    r.last_request IS NULL
     ", array(
       ':type'   => 'archive',
       ':status' => 1,
