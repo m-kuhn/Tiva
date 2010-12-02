@@ -83,16 +83,20 @@ function _timeline_archive_installed_fields() {
       ),
     ),
     'archive_frequency' => array(
-      'field_name'      => 'archive_frequency',
-      'type'            => 'taxonomy_term_reference',
-      'settings'        => array(
-        'allowed_values'  => array(
+      'field_name'        => 'archive_frequency',
+      'type'              => 'taxonomy_term_reference',
+      'settings'          => array(
+        'allowed_values'    => array(
           array(
-            'vocabulary'    => 'timeline_frequencies',
-            'parent'        => 0
+            'vocabulary'      => 'timeline_frequencies',
+            'parent'          => 0
           ),
         ),
       ),
+    ),
+    'archive_base_time' => array(
+      'field_name'        => 'archive_base_time',
+      'type'              => 'datestamp',
     ),
     'preview_picture' => array(
       'field_name' => 'preview_picture',
@@ -136,6 +140,16 @@ function _timeline_archive_installed_instances() {
       'display' => array(
         'default' => array('type' => 'hidden'),
         'teaser' => array('type' => 'hidden')
+      ),
+    ),
+    'archive_basetime' => array(
+      'field_name'   => 'archive_basetime',
+      'label'        => $t('Basetime'),
+      'description'  => 'The basetime is the time you want your pictures to be taken. It is used in low-frequency archives do determine the time of the picture. E.g. If in a daily archive the pictures should be taken midnight, morning or noon.',
+      'type'         => 'datetime',
+      'required'     => true,
+      'widget'       => array(
+        'type'         => 'date_popup',
       ),
     ),
     'preview_picture' => array(
@@ -369,6 +383,32 @@ function timeline_update_7001() {
   }
 }
 
-function timeline_update_7002() {
-  db_query("ALTER TABLE `records` CHANGE `scheduled_time` `request_time` INT( 10 ) UNSIGNED NOT NULL DEFAULT '0' COMMENT 'The time our image was scheduled to download.'")->execute();
+/*
+ * Timeline: Create Basetime Field
+ */
+
+function timeline_update_7003() {
+  field_create_field(array(
+      'field_name'   => 'archive_basetime',
+      'label'        => t('Basetime'),
+      'description'  => 'The basetime is the time you want your pictures to be taken. It is used in low-frequency archives do determine the time of the picture. E.g. If in a daily archive the pictures should be taken midnight, morning or noon.',
+      'type'         => 'datetime',
+      'required'     => true,
+      'widget'       => array(
+        'type'         => 'date_popup',
+      ),
+    ));
+
+  field_create_instance(array(
+      'field_name'   => 'archive_basetime',
+      'label'        => t('Basetime'),
+      'description'  => 'The basetime is the time you want your pictures to be taken. It is used in low-frequency archives do determine the time of the picture. E.g. If in a daily archive the pictures should be taken midnight, morning or noon.',
+      'type'         => 'datetime',
+      'required'     => true,
+      'widget'       => array(
+        'type'         => 'date_popup',
+      ),
+      'entity_type'  => 'node',
+      'bundle'       => 'archive',
+    ));
 }
