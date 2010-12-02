@@ -11,6 +11,7 @@ files[]=timeline_animation.field.inc
 dependencies[] = timeline
 dependencies[] = date_popup
 dependencies[] = date
+dependencies[] = references
 
 ; Information added by mku
 version = "7.x-1.x-dev"
