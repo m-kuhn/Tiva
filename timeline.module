@@ -171,12 +171,32 @@ function _timeline_save_image($request_time, $file, $archive, $error) {
  */
 
 function timeline_cron() {
-  // load all archives
-  $nids = db_select('node', 'n')
-    ->fields('n', array('nid', 'created'))
-    ->condition('status', 1)
-    ->condition('type', 'archive')
-    ->execute()
+  // load all archives that need update
+  // ToDo: verify name of table of taxonomy terms (field_data_timeline_frequency_seconds)
+  $nids = db_query("
+    SELECT n.nid
+    FROM {node} n
+    LEFT JOIN
+      (SELECT nid, MAX(request_time) AS last_request
+       FROM {records}
+       GROUP BY nid
+      ) r
+    ON r.nid = n.nid
+    LEFT JOIN
+      (SELECT field_frequencies.entity_id, field_seconds.timeline_frequency_seconds_value AS seconds
+       FROM field_data_archive_frequency field_frequencies
+       LEFT JOIN field_data_timeline_frequency_seconds field_seconds
+       ON field_seconds.entity_id = field_frequencies.archive_frequency_tid
+      ) s
+    ON s.entity_id = n.nid
+    WHERE n.type = :type
+    AND   n.status = :status
+    AND   r.last_request + s.seconds < :now
+    ", array(
+      ':type'   => 'archive',
+      ':status' => 1,
+      ':now'    => time(),
+    ))
     ->fetchCol();
 
   $archives = node_load_multiple($nids);
