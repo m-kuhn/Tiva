@@ -122,6 +122,7 @@ function _timeline_archive_installed_instances() {
     'archive_url' => array(
       'field_name'   => 'archive_url',
       'label'        => $t('URL'),
+      'description'  => $t('The URL of the image to be downloaded. Normally ending with .jpg, .jpeg or .png.'),
       'type'         => 'text',
       'required'     => true,
       'widget'       => array(
@@ -132,6 +133,7 @@ function _timeline_archive_installed_instances() {
       'field_name'   => 'archive_frequency',
       'entity_type'  => 'node',
       'label'        => $t('Interval'),
+      'description'  => $t('In this Interval Images will be downloaded.'),
       'required'     => true,
       'widget'       => array(
         'type'         => 'options_select',
