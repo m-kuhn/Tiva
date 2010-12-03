@@ -50,53 +50,11 @@ function timeline_field_widget_form(&$form, &$form_state, $field, $instance, $la
         ),
         '#suffix'           => '<div id="url-check-div"></div>',
         '#element_validate' => array('timeline_url_validate'),
-
-      );
-      break;
-
-    case 'text_textarea_with_summary':
-      $display = !empty($items[$delta]['summary']) || !empty($instance['settings']['display_summary']);
-      $summary_widget = array(
-        '#type' => $display ? 'textarea' : 'value',
-        '#default_value' => isset($items[$delta]['summary']) ? $items[$delta]['summary'] : NULL,
-        '#title' => t('Summary'),
-        '#rows' => $instance['widget']['settings']['summary_rows'],
-        '#description' => t('Leave blank to use trimmed value of full text as the summary.'),
-        '#attached' => array(
-          'js' => array(drupal_get_path('module', 'text') . '/text.js'),
-        ),
-        '#attributes' => array('class' => array('text-summary')),
-        '#prefix' => '<div class="text-summary-wrapper">',
-        '#suffix' => '</div>',
-        '#weight' => -10,
-      );
-      // Fall through to the next case.
-
-    case 'text_textarea':
-      $main_widget = $element + array(
-        '#type' => 'textarea',
-        '#default_value' => isset($items[$delta]['value']) ? $items[$delta]['value'] : NULL,
-        '#rows' => $instance['widget']['settings']['rows'],
-        '#attributes' => array('class' => array('text-full')),
       );
       break;
   }
 
-  if ($main_widget) {
-    // Conditionally alter the form element's type if text processing is enabled.
-    if ($instance['settings']['text_processing']) {
-      $element = $main_widget;
-      $element['#type'] = 'text_format';
-      $element['#format'] = isset($items[$delta]['format']) ? $items[$delta]['format'] : NULL;
-      $element['#base_type'] = $main_widget['#type'];
-    }
-    else {
-      $element['value'] = $main_widget;
-    }
-  }
-  if ($summary_widget) {
-    $element['summary'] = $summary_widget;
-  }
+  $element['value'] = $main_widget;
 
   return $element;
 }
