@@ -39,7 +39,9 @@ function timeline_animation_node_insert($node) {
     $queue->createQueue();  // There is no harm in trying to recreate existing.
 
     $queue->createItem($node->nid);
-    
+
+    // ToDo: remove this. This will create animations just in time.
+    // On production sites we want them to be built on the next cron run.
     timeline_animation_cron();
   }
 }
@@ -83,8 +85,8 @@ function timeline_animation_cron() {
         ':interval'   => 300 * $animation->timeline_animation_interval['und'][0]['value'],
         ':start_time' => $animation->timeline_animation_start['und'][0]['value'],
         ':end_time'   => $animation->timeline_animation_end['und'][0]['value'],
-      ))
-;
+      )
+    );
 
     if(!$result) {
       // No frames? Delete the node.
@@ -122,19 +124,19 @@ function timeline_animation_cron() {
     $directory = 'public://timeline/animations/' . $animation->nid;
     file_prepare_directory($directory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
 
-    $converted = file_create_filename("animation{$animation->nid}.mp4", $directory);
+    $final_destination = file_create_filename("animation-{$animation->nid}.mp4", $directory);
 
-    $command = t('!ffmpeg_path -r !fps -b !bitrate -i !infile !converted -vcodec !codec -pass !pass -vtag !vtag 2>&1', array(
+    $command = t('!ffmpeg_path -r !fps -b !bitrate -i !infile !final_destination -vcodec !codec -pass !pass -vtag !vtag 2>&1', array(
       '!ffmpeg_path' => '/usr/bin/ffmpeg',
       '!fps'       => 15,
       '!bitrate'   => '4000k',
       '!infile'    => "{$temppath}frame%04d.jpg",
-      '!converted' => drupal_realpath($converted),
+      '!final_destination' => drupal_realpath($final_destination),
       '!codec'     => 'mpeg4',
       '!pass'      => 2,
       '!vtag'      => 'xvid',
     ));
-      
+    
     ob_start();
     passthru($command, $command_return);
     $output = ob_get_contents();
@@ -151,9 +153,9 @@ function timeline_animation_cron() {
     // save the file...
     // ToDo: Check if the command was successful
     $file = new stdClass();
-    $file->uri      = $converted;
-    $file->filename = basename($converted);
-    $file->filemime = file_get_mimetype($converted);
+    $file->uri      = $final_destination;
+    $file->filename = basename($final_destination);
+    $file->filemime = file_get_mimetype($final_destination);
     $file->uid      = $animation->uid;
     $file->display  = 0;
 
@@ -166,4 +168,10 @@ function timeline_animation_cron() {
   }
 }
 
-?>
+/*
+ * Implements hook_form_alter
+ */
+
+function timeline_animation_form_animation_node_form_alter(&$form, $form_state, $form_id) {
+  unset($form['timeline_animation_animation']);
+}
