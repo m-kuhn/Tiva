@@ -1,6 +1,14 @@
 <?php
 // $Id$
 
+
+function timeline_form_alter(&$form, $form_state, $form_id) {
+  if ($form_id == 'archive_node_form') {
+    $form_state['rebuild'] = true;
+    unset($form['preview_picture']);
+  }
+}
+
 /*
  * Here follow the definitions for our URL-Field.
  * We have to do this to perform ajax. No idea why.
@@ -149,6 +157,10 @@ function _ajax_check_url_callback ($form, $form_state) {
 
   return '<div id="url-check-div">' . $img_tag . '</div>';
 }
+
+/*
+ * 
+ */
 
 function timeline_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
   $element = array();
