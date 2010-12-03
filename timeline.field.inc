@@ -116,45 +116,4 @@ function _ajax_check_url_callback ($form, $form_state) {
   return '<div id="url-check-div">' . $img_tag . '</div>';
 }
 
-/*
- * 
- */
-
-function timeline_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
-  $element = array();
-
-  switch ($display['type']) {
-    case 'text_default':
-    case 'text_trimmed':
-      foreach ($items as $delta => $item) {
-        $output = _text_sanitize($instance, $langcode, $item, 'value');
-        if ($display['type'] == 'text_trimmed') {
-          $output = text_summary($output, $instance['settings']['text_processing'] ? $item['format'] : NULL, $display['settings']['trim_length']);
-        }
-        $element[$delta] = array('#markup' => $output);
-      }
-      break;
-
-    case 'text_summary_or_trimmed':
-      foreach ($items as $delta => $item) {
-        if (!empty($item['summary'])) {
-          $output = _text_sanitize($instance, $langcode, $item, 'summary');
-        }
-        else {
-          $output = _text_sanitize($instance, $langcode, $item, 'value');
-          $output = text_summary($output, $instance['settings']['text_processing'] ? $item['format'] : NULL, $display['settings']['trim_length']);
-        }
-        $element[$delta] = array('#markup' => $output);
-      }
-      break;
-
-    case 'text_plain':
-      foreach ($items as $delta => $item) {
-        $element[$delta] = array('#markup' => strip_tags($item['value']));
-      }
-      break;
-  }
-
-  return $element;
-}
 ?>
