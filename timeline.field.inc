@@ -2,11 +2,8 @@
 // $Id$
 
 
-function timeline_form_alter(&$form, $form_state, $form_id) {
-  if ($form_id == 'archive_node_form') {
-    $form_state['rebuild'] = true;
-    unset($form['preview_picture']);
-  }
+function timeline_form_archive_node_form_alter(&$form, $form_state, $form_id) {
+  unset($form['preview_picture']);
 }
 
 /*
