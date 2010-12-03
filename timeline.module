@@ -99,7 +99,7 @@ function _timeline_download_image($url, $subdir) {
     file_save($file);
 
     if (!$curlresult) {
-      $retval['errmsg'][] = t('The connection could not be opened.');
+      $retval['errmsg'][] = t('The connection to :url could not be opened.', array('url' => $url));
     }
     if ($httpcode >= 300) {
       $retval['errmsg'][] = t('File could not be downloaded. (HTTP Code %httpcode)', array('%httpcode' => $httpcode));
@@ -166,103 +166,6 @@ function _timeline_save_image($request_time, $file, $archive, $error) {
 
 
 
-/*
- * Implement hook_cron
- */
-
-function timeline_cron() {
-  // load all archives that need update
-  // I'm pretty sure there is a nicer way to join the field data
-  $nids = db_query("
-    SELECT n.nid
-    FROM {node} n
-    # join the last record, so we now the time of the last download
-    LEFT JOIN
-      (SELECT nid, MAX(request_time) AS last_request
-       FROM {records}
-       GROUP BY nid
-      ) r
-    ON r.nid = n.nid
-    # now join all the interval information (frequency / basetime)
-    LEFT JOIN
-      (SELECT field_frequencies.entity_id                    AS entity_id,
-              field_seconds.timeline_frequency_seconds_value AS seconds,
-              field_basetime.archive_basetime_value          AS basetime
-       FROM field_data_archive_frequency field_frequencies
-       LEFT JOIN field_data_timeline_frequency_seconds field_seconds
-       ON field_seconds.entity_id = field_frequencies.archive_frequency_tid
-       LEFT JOIN field_data_archive_basetime field_basetime
-       ON field_basetime.entity_id = field_frequencies.entity_id
-      ) intrval
-    ON intrval.entity_id = n.nid
-    WHERE n.type = :type
-    AND   n.status = :status
-    AND   FLOOR(r.last_request / intrval.seconds) * intrval.seconds + (intrval.basetime % intrval.seconds)
-          < FLOOR(:now / intrval.seconds) * intrval.seconds
-    OR    r.last_request IS NULL
-    ", array(
-      ':type'   => 'archive',
-      ':status' => 1,
-      ':now'    => time(),
-    ))
-    ->fetchCol();
-
-  $archives = node_load_multiple($nids);
-
-  $max_processes = 10;
-  $running_processes = 0;
-
-  if (!function_exists('pcntl_fork')) {
-    watchdog('warning', "Function pcntl_fork doesn't exist. Downloading images as batch job. Please run from cli with pcntl enabled to run parallel jobs. scripts/drupal.sh http://[your site]/cron.php");
-  }
-
-  // start a seperate process for each archive
-  foreach ($archives as $archive) {
-    if (!function_exists('pcntl_fork')) {
-      $timestamp = time();
-      $download = _timeline_download_image($archive->archive_url['und'][0]['value'], $archive->nid);
-
-      if (empty($download['errmsg'])) {
-        _timeline_save_image($timestamp, $download['file'], $archive, $download['httpcode']);
-      } else {
-        watchdog ('timeline archive', 'we got an error: ' . implode('<br/>', $download['errmsg']));
-      }
-    } else {
-      // If we close the connection, a new one will be made for the child and
-      // it's not going to kill a connection that is in use just in the very
-      // same moment...
-      // Maybe persistent connections would be a way to circumvent that.
-      // If you like, go ahead and have a try
-      Database::closeConnection();
-
-      $pid = pcntl_fork();
-
-      if ($pid == -1) {
-           // could not fork
-      } else if ($pid) {
-        // we are the parent => babysit the childs
-        $running_processes++;
-        if (count($running_processes) >= $max_processes) {
-          $die_pid = pcntl_wait($status); // Wait for a child to exit
-          $running_processes --;
-        }
-      } else {
-        // we are the child
-        // here is the actual download done
-        // as soon as it's done, exit and let the parent spawn more processes
-        $timestamp = time();
-        $download = _timeline_download_image($archive->archive_url['und'][0]['value'], $archive->nid);
-        
-        if (empty($download['errmsg'])) {
-          _timeline_save_image($timestamp, $download['file'], $archive, $download['httpcode']);
-        } else {
-          watchdog ('timeline archive', 'error downloading image for archive ' . implode('<br/>', $download['errmsg']));
-        }
-        exit;
-      }
-    }
-  }
-}
 
 
 
@@ -300,4 +203,355 @@ function timeline_validate_extensions($filename, $extensions) {
     $errors[] = t('Only files with the following extensions are allowed: %files-allowed.', array('%files-allowed' => $extensions));
   }
   return $errors;
+}
+
+
+function timeline_form_archive_node_form_alter(&$form, $form_state, $form_id) {
+  // Only enable this fields if we're creating a new node
+  $disabled = isset($form['#node']->nid);
+  
+  $form['archive'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Base Information'),
+    '#collapsible' => TRUE,
+    '#collapsed' => $disabled,
+    '#tree' => TRUE,
+    '#weight' => -5,
+  );
+
+  $form['archive']['url'] = array (
+    '#type'     => 'textfield',
+    '#title'    => t('URL'),
+    '#description'  => t('The URL of the image to be downloaded. Normally ending with .jpg, .jpeg or .png.'),
+    '#default_value' => $form['#node']->archive['url'],
+    '#disabled'      => $disabled,
+    '#ajax'             => array(
+      'callback'        => '_ajax_check_url_callback',
+      'wrapper'         => 'url-check-div',
+      'method'          => 'replace',
+      'effect'          => 'fade',
+    ),
+    '#required'         => true,
+    '#element_validate' => array('timeline_url_validate'),
+    '#suffix'           => '<div id="url-check-div"></div>',
+  );
+
+  module_load_include('module', 'taxonomy', '/taxonomy');
+  $taxonomy_field['settings']['allowed_values'][0]['vocabulary'] = 'timeline_frequencies';
+  $taxonomy_field['settings']['allowed_values'][0]['parent'] = 0;
+
+  $form['archive']['frequency'] = array (
+    '#type'     => 'select',
+    '#title'    => t('Interval'),
+    '#description'  => t('In this interval images will be downloaded.'),
+    '#default_value' => $form['#node']->archive['frequency'],
+    '#disabled'      => $disabled,
+    '#options'  => taxonomy_allowed_values($taxonomy_field),
+  );
+
+  module_load_include('module', 'date_popup', '/date_popup');
+  $form['archive']['basetime'] = array_pop(date_popup_element_info());
+  $form['archive']['basetime'] += array (
+    '#type'        => 'date_combo',
+    '#title'       => t('Basetime'),
+    '#description' => t('The basetime is the time you want your pictures to be taken. It is used in low-frequency archives do determine the time of the picture. E.g. If in a daily archive the pictures should be taken midnight, morning or noon.'),
+    '#default_value' => $form['#node']->archive['basetime'],
+    '#disabled'      => $disabled,
+  );
+}
+
+/**
+ * hook_nodeapi() has been replaced in Drupal 7 with a set of different hooks
+ * providing the same or improved functionality.
+ *
+ * The replacement functions providing access to events ocurred to content in
+ * Drupal is listed below, and detailled in the following location:
+ * http://api.drupal.org/api/group/hooks/7
+ * or in the node API declaration file: modules/node/node.api.php
+ *
+ * hook_node_access()	- Control access to a node.
+ * hook_node_access_records()	-	Set permissions for a node to be written to the database.
+ * hook_node_access_records_alter()	-	Alter permissions for a node before it is written to the database.
+ * hook_node_build_alter()	-	The node content was built, the module may modify the structured content.
+ * hook_node_delete()	-	Act on node deletion.
+ * hook_node_grants()	-	Inform the node access system what permissions the user has.
+ * hook_node_grants_alter()	-	Alter user access rules when trying to view, edit or delete a node.
+ * hook_node_info()	-	Defines module-provided node types.
+ * hook_node_insert()	-	Respond to node insertion.
+ * hook_node_load()	-	Act on node objects when loaded.
+ * hook_node_operations()	-	Add mass node operations.
+ * hook_node_prepare()	-	The node is about to be shown on the add/edit form.
+ * hook_node_prepare_translation()	-	The node is being cloned for translation.
+ * hook_node_presave()	-	The node passed validation and is about to be saved.
+ * hook_node_revision_delete()	-	A revision of the node is deleted.
+ * hook_node_search_result()	-	The node is being displayed as a search result.
+ * hook_node_type_delete()	-	Act on node type deletion.
+ * hook_node_type_insert()	-	Act on node type creation.
+ * hook_node_type_update()	-	Act on node type changes.
+ * hook_node_update()	-	The node being updated.
+ * hook_node_update_index()	-	The node is being indexed.
+ * hook_node_validate()	-	The user has finished editing the node and is previewing or submitting it.
+ * hook_node_view()	-	The node content is being assembled before rendering.
+ *
+ */
+
+/**
+ * Implements hook_node_validate().
+ *
+ * Check that rating attribute is set in the form submission, the field is
+ * required
+ */
+function timeline_node_validate($node, $form) {
+  if (variable_get('nodeapi_example_' . $node->type, FALSE)) {
+    if (isset($node->nodeapi_example_rating) && !$node->nodeapi_example_rating) {
+      form_set_error('nodeapi_example_rating', t('You must rate this content.'));
+    }
+  }
+}
+
+/**
+ * Implements hook_node_load().
+ *
+ * Load the rating information if available for any of the nodes in the argument
+ * list.
+ */
+function timeline_node_load($nodes, $form) {
+  foreach ($nodes as $node) {
+    $nids[] = $node->nid;
+  }
+  // Check if we should load any of the nodes
+  if (!isset($nids) || !count($nids)) {
+    return;
+  }
+
+  $result = db_select('archives', 'a')
+  ->fields('a', array(
+        'nid',
+        'url',
+        'frequency',
+        'basetime',
+        'preview_picture',
+  ))
+  ->where('a.nid IN (:nids)', array(':nids' => $nids))
+  ->execute();
+
+  foreach ($result as $record) {
+    $nodes[$record->nid]->archive['url']             = $record->url;
+    $nodes[$record->nid]->archive['frequency']       = $record->frequency;
+    $nodes[$record->nid]->archive['basetime']        = $record->basetime;
+    $nodes[$record->nid]->archive['preview_picture'] = $record->preview_picture;
+  }
+
+  return $nodes;
+}
+
+/**
+ * Implements hook_node_insert().
+ *
+ * As a new node is being inserted into the database, we need to do our own
+ * database inserts.
+ */
+function timeline_node_insert($node) {
+  db_insert('archives')
+  ->fields(array(
+      'nid'             => $node->nid,
+      'url'             => $node->archive['url'],
+      'frequency'       => $node->archive['frequency'],
+      'basetime'        => $node->archive['basetime'],
+      'preview_picture' => 0,
+  ))
+  ->execute();
+}
+
+/**
+ * Implements hook_node_delete().
+ *
+ * When a node is deleted, we need to remove all related records from our table.
+ */
+function timeline_node_delete($node) {
+  // Notice that we're deleting even if the content type has no rating enabled.
+  db_delete('archives')
+    ->condition('nid', $node->nid)
+    ->execute();
+
+  db_delete('records')
+    ->condition('nid', $node->nid)
+    ->execute();
+
+  // ToDo: Proper file delete handling
+}
+
+/**
+ * Implements hook_view().
+ *
+ * This is a typical implementation that simply runs the node text through
+ * the output filters.
+ *
+ * Finally, we need to take care of displaying our rating when the node is
+ * viewed. This operation is called after the node has already been prepared
+ * into HTML and filtered as necessary, so we know we are dealing with an
+ * HTML teaser and body. We will inject our additional information at the front
+ * of the node copy.
+ *
+ * Using node API 'hook_node_view' is more appropriate than using a filter here, because
+ * filters transform user-supplied content, whereas we are extending it with
+ * additional information.
+ */
+function timeline_node_view($node, $build_mode = 'full') {
+  $rating = isset($node->nodeapi_example_rating) ? $node->nodeapi_example_rating : 0;
+  $node->content['nodeapi_example'] = array(
+    '#markup' => theme('nodeapi_example_rating', array('rating' => $rating)),
+      '#weight' => -1,
+  );
+}
+
+
+
+/*
+ *
+ */
+function _ajax_check_url_callback ($form, $form_state) {
+  $img_tag = '';
+  $url = $form_state['values']['archive']['url'];
+
+  if (isset($form_state['storage']['timeline']['url'][$url])) {
+    $variables = array(
+      'style_name' => 'thumbnail',
+      'path'       => $form_state['storage']['timeline']['url'][$url]->uri,
+      'alt'        => 'Image Preview',
+      'title'      => 'Image Preview',
+      'getsize'    => TRUE,
+    );
+
+    $img_tag = theme('image_style', $variables);
+  }
+
+  return '<div id="url-check-div">' . $img_tag . '</div>';
+}
+
+function timeline_url_validate($element, &$form_state) {
+  $errors = array();
+  $url = $element['#value'];
+  // If we already validated that url, return.
+  if (isset($form_state['storage']['timeline']['url'][$url])) {
+    return;
+  }
+
+  // default supported extensions.
+  // ToDo: make them configurable in admin display.
+  $extensions = 'png gif jpg jpeg';
+  $errors += timeline_validate_extensions($url, $extensions);
+
+  if (empty($errors)) {
+    $download = _timeline_download_image($url, 'preview');
+
+    $errors += $download['errmsg'];
+
+    // cache value
+    if (empty($errors)) {
+      $form_state['storage'] = array(
+        'timeline' => array(
+          'url' => array(
+            $url => $download['file'],
+          ),
+        ),
+      );
+    }
+  }
+
+  foreach ($errors as $error) {
+    form_error($element, t($error));
+  }
+}
+
+/*
+ * Implement hook_cron
+ */
+
+function timeline_cron() {
+  // load all archives that need update
+  // I'm pretty sure there is a nicer way to join the field data
+  $nids = db_query("
+    SELECT n.nid
+    FROM {node} n
+    # join the last record, so we now the time of the last download
+    LEFT JOIN
+      (SELECT nid, MAX(request_time) AS last_request
+       FROM {records}
+       GROUP BY nid
+      ) r
+    ON r.nid = n.nid
+    LEFT JOIN {archives} a
+    ON a.nid = n.nid
+    # now join all the interval information (frequency / basetime)
+    LEFT JOIN field_data_timeline_frequency_seconds field_seconds
+    ON field_seconds.entity_id = a.frequency
+    WHERE n.type = :type
+    AND   (
+            FLOOR(r.last_request / field_seconds.timeline_frequency_seconds_value) * field_seconds.timeline_frequency_seconds_value + (a.basetime % field_seconds.timeline_frequency_seconds_value)
+              < FLOOR(:now / field_seconds.timeline_frequency_seconds_value) * field_seconds.timeline_frequency_seconds_value
+            OR    r.last_request IS NULL
+          )
+    ", array(
+      ':type'   => 'archive',
+      ':now'    => time(),
+    ))
+    ->fetchCol();
+
+  $archives = node_load_multiple($nids);
+
+  $max_processes = 10;
+  $running_processes = 0;
+
+  if (!function_exists('pcntl_fork')) {
+    watchdog('warning', "Function pcntl_fork doesn't exist. Downloading images as batch job. Please run from cli with pcntl enabled to run parallel jobs. scripts/drupal.sh http://[your site]/cron.php");
+  }
+
+  watchdog('timeline archive', t('starting download for :count images.', array(':count' => count($archives))));
+  // start a seperate process for each archive
+  foreach ($archives as $archive) {
+    if (!function_exists('pcntl_fork')) {
+      $timestamp = time();
+      $download = _timeline_download_image($archive->archive['url'], $archive->nid);
+
+      if (empty($download['errmsg'])) {
+        _timeline_save_image($timestamp, $download['file'], $archive, $download['httpcode']);
+      } else {
+        watchdog ('timeline archive', 'we got an error: ' . implode('<br/>', $download['errmsg']));
+      }
+    } else {
+      // If we close the connection, a new one will be made for the child and
+      // it's not going to kill a connection that is in use just in the very
+      // same moment...
+      // Maybe persistent connections would be a way to circumvent that.
+      // If you like, go ahead and have a try
+      Database::closeConnection();
+
+      $pid = pcntl_fork();
+
+      if ($pid == -1) {
+           // could not fork
+      } else if ($pid) {
+        // we are the parent => babysit the childs
+        $running_processes++;
+        if (count($running_processes) >= $max_processes) {
+          $die_pid = pcntl_wait($status); // Wait for a child to exit
+          $running_processes --;
+        }
+      } else {
+        // we are the child
+        // here is the actual download done
+        // as soon as it's done, exit and let the parent spawn more processes
+        $timestamp = time();
+        $download = _timeline_download_image($archive->archive['url'], $archive->nid);
+
+        if (empty($download['errmsg'])) {
+          _timeline_save_image($timestamp, $download['file'], $archive, $download['httpcode']);
+        } else {
+          watchdog ('timeline archive', 'error downloading image for archive ' . implode('<br/>', $download['errmsg']));
+        }
+        exit;
+      }
+    }
+  }
 }

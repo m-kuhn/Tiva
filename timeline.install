@@ -269,6 +269,9 @@ function timeline_uninstall() {
  */
 
 function timeline_schema() {
+  /*
+   * The schema for record information
+   */
   $schema['records'] = array(
     'description' => 'All our records.',
     'fields' => array(
@@ -332,6 +335,62 @@ function timeline_schema() {
     ),
     'primary key' => array('rid'),
   );
+  
+  /*
+   * The schema for archive information
+   */
+
+  $schema['archives'] = array(
+    'description' => 'All our archive information.',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'The {node}.nid this archive belongs to.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'url' => array(
+        'description' => 'The url this archive is based on.',
+        'type' => 'varchar',
+        'length' => 2083,  // Taken from http://stackoverflow.com/questions/219569/best-database-field-type-for-a-url
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'frequency' => array(
+        'description' => 'The tid of the taxonomy_term that contains the frequency for this archive.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'basetime' => array(
+        'description' => 'The timestamp of the basetime for this archive.',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'preview_picture' => array(
+        'description' => 'The {file_managed}.fid to use as preview picture for this archive.',
+        'type' => 'int',
+        'default' => 0,
+      ),
+    ),
+    'indexes' => array(
+      'archive_frequency' => array('frequency'),
+    ),
+    'foreign keys' => array(
+      'file_managed' => array(
+        'table' => 'file_managed',
+        'columns' => array('fid' => 'fid'),
+      ),
+      'nid' => array(
+        'table' => 'node',
+        'columns' => array('nid' => 'nid'),
+      ),
+    ),
+    'primary key' => array('nid'),
+  );
+
   return $schema;
 }
 
@@ -413,4 +472,24 @@ function timeline_update_7003() {
       'entity_type'  => 'node',
       'bundle'       => 'archive',
     ));
+}
+
+/*
+ * Ban archive information in own table. Instead of fields. Much nicer :)
+ */
+function timeline_update_7005() {
+  $schema = timeline_schema();
+
+  db_create_table('archives', $schema['archives']);
+
+  db_query('INSERT INTO {archives} (nid, url, frequency, basetime, preview_picture)
+            SELECT freq.entity_id, url.archive_url_value, freq.archive_frequency_tid, IF(ISNULL(base.archive_basetime_value), 0, unix_timestamp(base.archive_basetime_value)),  pict.preview_picture_fid
+            FROM `field_data_archive_frequency` freq
+            LEFT JOIN field_data_archive_basetime base
+            ON base.entity_id = freq.entity_id
+            LEFT JOIN field_data_archive_url url
+            ON url.entity_id = freq.entity_id
+            LEFT JOIN field_data_preview_picture pict
+            ON pict.entity_id = freq.entity_id
+  ');
 }
