@@ -8,6 +8,9 @@ files[]=timeline.module
 files[]=timeline.install
 files[]=timeline.field.inc
 files[]=timeline.admin.inc
+files[]=timeline.views.inc
+files[]=includes/views_handler_image.inc
+
 
 dependencies[] = image
 dependencies[] = date_popup

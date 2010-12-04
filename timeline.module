@@ -466,6 +466,11 @@ function timeline_url_validate($element, &$form_state) {
 
 /*
  * Implement hook_cron
+ *
+ * ToDo:
+ * This function should probably not be run from drupal's own cron but rather
+ * from a dedicated function.
+ *
  */
 
 function timeline_cron() {
@@ -554,4 +559,12 @@ function timeline_cron() {
       }
     }
   }
+}
+
+/*
+ * Implements hook_views_api
+ */
+
+function timeline_views_api() {
+  return array('api' => 2);
 }
