@@ -302,11 +302,6 @@ function timeline_form_archive_node_form_alter(&$form, $form_state, $form_id) {
  * required
  */
 function timeline_node_validate($node, $form) {
-  if (variable_get('nodeapi_example_' . $node->type, FALSE)) {
-    if (isset($node->nodeapi_example_rating) && !$node->nodeapi_example_rating) {
-      form_set_error('nodeapi_example_rating', t('You must rate this content.'));
-    }
-  }
 }
 
 /**
@@ -317,7 +312,9 @@ function timeline_node_validate($node, $form) {
  */
 function timeline_node_load($nodes, $form) {
   foreach ($nodes as $node) {
-    $nids[] = $node->nid;
+    if ($node->type == 'archive') {
+      $nids[] = $node->nid;
+    }
   }
   // Check if we should load any of the nodes
   if (!isset($nids) || !count($nids)) {
@@ -352,15 +349,17 @@ function timeline_node_load($nodes, $form) {
  * database inserts.
  */
 function timeline_node_insert($node) {
-  db_insert('archives')
-  ->fields(array(
-      'nid'             => $node->nid,
-      'url'             => $node->archive['url'],
-      'frequency'       => $node->archive['frequency'],
-      'basetime'        => $node->archive['basetime'],
-      'preview_picture' => 0,
-  ))
-  ->execute();
+  if ($node->type == 'archive') {
+    db_insert('archives')
+    ->fields(array(
+        'nid'             => $node->nid,
+        'url'             => $node->archive['url'],
+        'frequency'       => $node->archive['frequency'],
+        'basetime'        => $node->archive['basetime'],
+        'preview_picture' => 0,
+    ))
+    ->execute();
+  }
 }
 
 /**
@@ -369,16 +368,18 @@ function timeline_node_insert($node) {
  * When a node is deleted, we need to remove all related records from our table.
  */
 function timeline_node_delete($node) {
-  // Notice that we're deleting even if the content type has no rating enabled.
-  db_delete('archives')
-    ->condition('nid', $node->nid)
-    ->execute();
+  if ($node->type == 'archive') {
+    // Notice that we're deleting even if the content type has no rating enabled.
+    db_delete('archives')
+      ->condition('nid', $node->nid)
+      ->execute();
 
-  db_delete('records')
-    ->condition('nid', $node->nid)
-    ->execute();
+    db_delete('records')
+      ->condition('nid', $node->nid)
+      ->execute();
 
-  // ToDo: Proper file delete handling
+    // ToDo: Proper file delete handling
+  }
 }
 
 /**
@@ -398,11 +399,6 @@ function timeline_node_delete($node) {
  * additional information.
  */
 function timeline_node_view($node, $build_mode = 'full') {
-  $rating = isset($node->nodeapi_example_rating) ? $node->nodeapi_example_rating : 0;
-  $node->content['nodeapi_example'] = array(
-    '#markup' => theme('nodeapi_example_rating', array('rating' => $rating)),
-      '#weight' => -1,
-  );
 }
 
 
