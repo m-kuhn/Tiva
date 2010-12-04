@@ -121,7 +121,7 @@ function timeline_animation_cron() {
 
     $i = 0;
     $image_info = false;
-    $symlinks = array();
+    $symlink = array();
 
     while ($record = $result->fetchAssoc()) {
       // ToDo: Handle missing frames
