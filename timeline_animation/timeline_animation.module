@@ -23,6 +23,28 @@ function timeline_animation_menu() {
   return $items;
 }
 
+/**
+ * Implements hook_trigger_info().
+ *
+ * We call hook_trigger_info when we are defining the triggers we provide.
+ * Triggers are the events that make fire any number of assigned actions. In
+ * this example, we are registering our three new triggers, providing the group
+ * (system, user..), the callback 'hook' (only informative, does not require a
+ * real hook) function and the label to be shown in the triggers interface.
+ *
+ * Example: In the group (a tab) 'system', for the 'mail' functionality, show:
+ * An email is sent by Drupal.
+ */
+function timeline_animation_trigger_info() {
+  return array(
+    'timeline_animation' => array(
+      'animation_created' => array(
+        'label' => t('After an animation has been created'),
+      ),
+    ),
+  );
+}
+
 /*
  * Implements hook_node_insert
  *
@@ -128,7 +150,7 @@ function timeline_animation_cron() {
 
     $command = t('!ffmpeg_path -r !fps -b !bitrate -i !infile !final_destination -vcodec !codec -pass !pass -vtag !vtag 2>&1', array(
       '!ffmpeg_path' => '/usr/bin/ffmpeg',
-      '!fps'       => 15,
+      '!fps'       => $animation->timeline_animation_fps['und'][0]['value'],
       '!bitrate'   => '4000k',
       '!infile'    => "{$temppath}frame%04d.jpg",
       '!final_destination' => drupal_realpath($final_destination),
@@ -163,6 +185,16 @@ function timeline_animation_cron() {
 
     $animation->timeline_animation_animation['und'][0] = (array)$file;
     node_save($animation);
+
+    $aids = trigger_get_assigned_actions('animation_created');
+
+    $options = array();
+    $context = array(
+      'group' => 'timeline_animation',
+      'hook'  => 'animation_created',
+      'node'  => $animation,
+    );
+    actions_do(array_keys($aids), (object) $options, $context);
     
     $queue->deleteItem($item);
   }
@@ -170,6 +202,8 @@ function timeline_animation_cron() {
 
 /*
  * Implements hook_form_alter
+ *
+ * Remove the file upload field from the form
  */
 
 function timeline_animation_form_animation_node_form_alter(&$form, $form_state, $form_id) {

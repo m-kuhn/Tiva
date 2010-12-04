@@ -9,6 +9,8 @@ module_load_include('inc', 'node', '/node.pages');
 function animation_add($archive) {
   global $user;
 
+  drupal_add_js(drupal_get_path('module', 'timeline_animation') .'/timeline_animation.js');
+
   $node = (object) array(
     'uid' => $user->uid,
     'name' => (isset($user->name) ? $user->name : ''),

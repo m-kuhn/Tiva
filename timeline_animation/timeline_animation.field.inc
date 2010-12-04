@@ -62,4 +62,29 @@ function timeline_animation_field_widget_form(&$form, &$form_state, $field, $ins
   return $elements;
 }
 
+function timeline_animation_field_formatter_info_alter(&$info) {
+  return array(
+    'file_animation' => array(
+      'label' => t('Animation'),
+      'field types' => array('file'),
+    )
+  );
+}
+
+function timeline_animation_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  switch ($display['type']) {
+    case 'file_animation':
+      foreach ($items as $delta => $item) {
+        $element[$delta] = array(
+          '#theme' => 'file_link',
+          '#file' => (object) $item,
+        );
+      }
+      break;
+  }
+}
+
+function timeline_animation_field_attach_view_alter($output, $context) {
+  echo $output;
+}
 ?>
