@@ -61,10 +61,6 @@ function timeline_animation_node_insert($node) {
     $queue->createQueue();  // There is no harm in trying to recreate existing.
 
     $queue->createItem($node->nid);
-
-    // ToDo: remove this. This will create animations just in time.
-    // On production sites we want them to be built on the next cron run.
-    timeline_animation_cron();
   }
 }
 
