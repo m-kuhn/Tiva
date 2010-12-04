@@ -223,7 +223,7 @@ function timeline_form_archive_node_form_alter(&$form, $form_state, $form_id) {
     '#type'     => 'textfield',
     '#title'    => t('URL'),
     '#description'  => t('The URL of the image to be downloaded. Normally ending with .jpg, .jpeg or .png.'),
-    '#default_value' => $form['#node']->archive['url'],
+    '#default_value' => isset($form['#node']->archive['url']) ? $form['#node']->archive['url'] : '',
     '#disabled'      => $disabled,
     '#ajax'             => array(
       'callback'        => '_ajax_check_url_callback',
@@ -244,7 +244,7 @@ function timeline_form_archive_node_form_alter(&$form, $form_state, $form_id) {
     '#type'     => 'select',
     '#title'    => t('Interval'),
     '#description'  => t('In this interval images will be downloaded.'),
-    '#default_value' => $form['#node']->archive['frequency'],
+    '#default_value' => isset($form['#node']->archive['frequency']) ? $form['#node']->archive['frequency'] : '',
     '#disabled'      => $disabled,
     '#options'  => taxonomy_allowed_values($taxonomy_field),
   );
@@ -255,7 +255,7 @@ function timeline_form_archive_node_form_alter(&$form, $form_state, $form_id) {
     '#type'        => 'date_combo',
     '#title'       => t('Basetime'),
     '#description' => t('The basetime is the time you want your pictures to be taken. It is used in low-frequency archives do determine the time of the picture. E.g. If in a daily archive the pictures should be taken midnight, morning or noon.'),
-    '#default_value' => $form['#node']->archive['basetime'],
+    '#default_value' => isset($form['#node']->archive['basetime']) ? $form['#node']->archive['basetime'] : null,
     '#disabled'      => $disabled,
   );
 }
