@@ -9,10 +9,6 @@ function timeline_views_data() {
   $data['archives'] = array(
     'table' => array(
       'group' => t('Archive'),
-      'base'  => array(
-        'field' => 'nid',
-        'title' => 'Node ID',
-      ),
       'join' => array(
         'node' => array (
           'left_field' => 'nid',
@@ -36,6 +32,94 @@ function timeline_views_data() {
         'click sortable' => TRUE,
       ),
     )
+  );
+
+  /*
+   * Define the records table...
+   */
+
+  $data['records']['table']['group'] = t('Archive');
+
+  $data['records']['table']['base'] = array(
+    'field' => 'rid',
+    'title' => t('Timeline Records'),
+    'help' => t("Images recorded by the timeline tool."),
+  );
+
+  $data['records']['table']['join'] = array(
+    'node' => array (
+      'left_field' => 'nid',
+      'field'      => 'nid',
+    ),
+  );
+
+  // rid
+  $data['records']['rid'] = array(
+    'title' => t('ID'),
+    'help' => t('The record ID of the field'),
+    'field' => array(
+      'handler' => 'views_handler_field_custom',
+      'click sortable' => TRUE,
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_numeric',
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+    'argument' => array(
+      'handler' => 'views_handler_argument_numeric',
+    ),
+  );
+
+  // request_time
+  $data['records']['request_time'] = array(
+    'title' => t('Time'),
+    'help' => t('The time the download of this image was initiated'),
+    'field' => array(
+      'handler' => 'views_handler_field_date',
+      'click sortable' => TRUE,
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_numeric',
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+    'argument' => array(
+      'handler' => 'views_handler_argument_numeric',
+    ),
+  );
+
+  // image
+  $data['records']['fid'] = array(
+    'title' => t('Image'),
+    'help' => t('The image of this field'),
+    'field' => array(
+      'handler' => 'views_handler_image',
+      'click sortable' => TRUE,
+    ),
+    'filter' => array(
+      'handler' => 'views_handler_filter_numeric',
+    ),
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+    'argument' => array(
+      'handler' => 'views_handler_argument_numeric',
+    ),
+  );
+
+
+  $data['records']['nid'] = array(
+    'title' => t('Archive'),
+    'help' => t('The node this record belongs to.'),
+    'relationship' => array(
+      'base' => 'node',
+      'base field' => 'nid',
+      'handler' => 'views_handler_relationship',
+      'label' => t('Archive'),
+    ),
   );
 
   return $data;
