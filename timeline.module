@@ -74,7 +74,7 @@ function _timeline_download_image($url, $subdir) {
     $directory = 'public://timeline/images/' . $subdir;
     file_prepare_directory($directory, FILE_CREATE_DIRECTORY | FILE_MODIFY_PERMISSIONS);
     $tempnam = file_create_filename(basename($url), $directory);
-    $fh = fopen(drupal_realpath($tempnam), 'w');
+    $fh = fopen($tempnam, 'w');
 
     curl_setopt($ch, CURLOPT_FAILONERROR, TRUE);  // this works
     curl_setopt($ch, CURLOPT_HTTPHEADER, array("User-Agent: Timeline Download Script; See http://tiva.geo.uzh.ch;") );
@@ -119,14 +119,8 @@ function _timeline_save_image($request_time, $file, $archive, $error) {
   $file->status = FILE_STATUS_PERMANENT;
   file_save($file);
 
-  if(empty($archive->preview_picture)) {
-    $archive->preview_picture = array(
-      'und' => array(
-        0 => (array) $file,
-      ),
-    );
-    node_save($archive);
-  }
+  $archive->archive['preview_picture'] = $file;
+  node_save($archive);
 
   db_insert('records')
     ->fields(array(
@@ -258,6 +252,8 @@ function timeline_form_archive_node_form_alter(&$form, $form_state, $form_id) {
     '#default_value' => isset($form['#node']->archive['basetime']) ? $form['#node']->archive['basetime'] : null,
     '#disabled'      => $disabled,
   );
+  // Unset, as this relies on this widget being part of a field
+  unset($form['archive']['basetime']['#element_validate']['date_combo_validate']);
 }
 
 /**
@@ -399,8 +395,13 @@ function timeline_node_delete($node) {
  * additional information.
  */
 function timeline_node_view($node, $build_mode = 'full') {
+  if ($node->type == 'archive') {
+    $node->content['archive'] = array(
+      'template'  => 'archive',
+      'variables' => $node->archive,
+    );
+  }
 }
-
 
 
 /*
