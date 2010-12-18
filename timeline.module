@@ -21,37 +21,9 @@ module_load_include('inc', 'timeline', '/timeline.field');
 
 
 /*
- * All the image download and saving stuff...
- */
-
-function _get_preview_image($url) {
-  $content = drupal_http_request($url);
-
-  if ($content->data) {
-    $newfile = file_save_data($content->data);
-    $image = image_load($newfile->uri);
-    image_scale($image, 100);
-    
-    $info = file_validate_is_image($newfile);
-    if ($info[0]) {
-      $retval['errno'] = TIMELINE_NO_IMG;
-      $retval['errmsg'] = $info[0];
-    }
-  }
-  else {
-    $retval['errno'] = TIMELINE_NO_CONNECTION;
-  }
-
-  $file = drupal_http_request($url);
-  if ($file) {
-    $image = image_load($file);
-    image_scale($image, 100);
-  }
-
-}
-
-/*
  * Downloads the image
+ *
+ *
  *
  */
 
