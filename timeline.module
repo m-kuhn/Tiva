@@ -81,6 +81,11 @@ function _timeline_download_image($url, $subdir) {
     curl_setopt($ch, CURLOPT_FILE, $fh);
     curl_setopt($ch, CURLOPT_TIMEOUT, 30); // Set a timeout (for the whole operation)
     curl_setopt($ch, CURLOPT_RANGE,"-$maxsize"); // Limit the maximum file size
+    /* @TODO: what actually is done here is, a Range-Header is sent in the request.
+     * So we just download the first $maxsize bytes of the file, which obviously is not
+     * what we want. Probably this should be done with a write callback function.
+     * (see: CURLOPT_WRITEFUNCTION at http://php.net/manual/en/function.curl-setopt.php)
+     */
 
     $curlresult = curl_exec($ch);
     $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -119,7 +124,7 @@ function _timeline_save_image($request_time, $file, $archive, $error) {
   $file->status = FILE_STATUS_PERMANENT;
   file_save($file);
 
-  $archive->archive['preview_picture'] = $file;
+  $archive->archive['preview_picture'] = $file->fid;
   node_save($archive);
 
   db_insert('records')
@@ -132,7 +137,6 @@ function _timeline_save_image($request_time, $file, $archive, $error) {
       ))
     ->execute();
 }
-
 
 
 
