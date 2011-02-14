@@ -23,7 +23,20 @@ module_load_include('inc', 'timeline', '/timeline.field');
 /*
  * Downloads the image
  *
+ * @param $url
+ *   a string containing the url to download
+ * @param $subdir
+ *   the subdir, where this file should be downloaded to
  *
+ * @return
+ *   an array in the form
+ *   array(
+ *     errmsg   => an array of error messages
+ *     httpcode => the http code returned in the response header
+ *     file     => a drupal file object
+ *   )
+ *   it is usually safe to check if the errmsg array is empty and the httpcode
+ *   is in the range 200-300
  *
  */
 
